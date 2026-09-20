@@ -11,20 +11,27 @@ from bs4 import BeautifulSoup
 
 log = logging.getLogger(__name__)
 
+
+def _slugify(name: str) -> str:
+    slug = name.lower()
+    slug = re.sub(r"[^a-z0-9]+", "-", slug)
+    return slug.strip("-")
+
+
 SCHEDULE_URL = "https://www.allprosoftware.net/HASLSUMMER23/aplsmasterschedule.htm"
 TIMEZONE = "America/New_York"
 
-_DATE_LOC_RE = re.compile(
+TIME_AND_PLACE_REGEX = re.compile(
     r"^(?:Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday),\s+(.+?)\s+(\d{4})\s+(.+)$"
 )
-_TEAM_ID_RE = re.compile(r"aplsteam(\d+)\.htm", re.IGNORECASE)
+_TEAM_ID_REGEX = re.compile(r"aplsteam(\d+)\.htm", re.IGNORECASE)
 # Matches "S1 CO-ED REC LEAGUE" style lines in the schedule index block
-_LEAGUE_INDEX_RE = re.compile(r"^(S\d)\s+(.+)$")
+_LEAGUE_INDEX_REGEX = re.compile(r"^(S\d)\s+(.+)$")
 
 
 def _parse_header(text: str) -> tuple[str, str] | None:
     """Return (date_str, location) from a date+location header cell, or None."""
-    m = _DATE_LOC_RE.match(text.strip())
+    m = TIME_AND_PLACE_REGEX.match(text.strip())
     if not m:
         return None
     month_day, year, location = m.group(1), m.group(2), m.group(3)
@@ -37,7 +44,7 @@ def _extract_team(cell) -> tuple[str, int | None]:
     if a:
         name = a.get_text(strip=True)
         href = a.get("href", "")
-        m = _TEAM_ID_RE.search(href)
+        m = _TEAM_ID_REGEX.search(href)
         team_id = int(m.group(1)) if m else None
         return name, team_id
     return cell.get_text(strip=True), None
@@ -49,7 +56,7 @@ def parse_league_index(soup: BeautifulSoup) -> dict[str, str]:
     index_cell = table.find("tr").find_all(["td", "th"])[1]
     leagues = {}
     for line in index_cell.get_text(separator="\n").splitlines():
-        m = _LEAGUE_INDEX_RE.match(line.strip())
+        m = _LEAGUE_INDEX_REGEX.match(line.strip())
         if m:
             leagues[m.group(1)] = m.group(2).strip()
     return leagues
@@ -159,7 +166,14 @@ def sync_to_db(events: list[dict]) -> None:
                     continue
                 team = session.get(Team, team_id)
                 if team is None:
-                    session.add(Team(id=team_id, name=team_name))
+                    slug = _slugify(team_name)
+                    clash = session.query(Team).filter_by(slug=slug).first()
+                    if clash:
+                        raise ValueError(
+                            f"Slug clash: '{team_name}' → '{slug}' already used by "
+                            f"'{clash.name}' (id={clash.id})"
+                        )
+                    session.add(Team(id=team_id, name=team_name, slug=slug))
                     teams_added += 1
                 elif team.name != team_name:
                     team.name = team_name

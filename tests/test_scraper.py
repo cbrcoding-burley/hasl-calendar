@@ -1,4 +1,6 @@
-from hasl_calendar.scraper import _game_id, parse_html
+import pytest
+
+from hasl_calendar.scraper import _game_id, _slugify, parse_html
 from tests.conftest import SCHEDULE_HTML
 
 
@@ -73,6 +75,58 @@ class TestParseHtml:
         events, _ = parsed_schedule
         ids = [e["id"] for e in events]
         assert len(ids) == len(set(ids))
+
+
+class TestSlugify:
+    def test_lowercases(self):
+        assert _slugify("TEK FC") == "tek-fc"
+
+    def test_strips_apostrophes(self):
+        assert _slugify("Soccer Monday's") == "soccer-monday-s"
+
+    def test_collapses_multiple_separators(self):
+        assert _slugify("Boozin' Benders FC") == "boozin-benders-fc"
+
+    def test_strips_leading_trailing_hyphens(self):
+        assert not _slugify("FC").startswith("-")
+        assert not _slugify("FC").endswith("-")
+
+    def test_same_name_produces_same_slug(self):
+        assert _slugify("Clare Bears") == _slugify("Clare Bears")
+
+
+class TestSlugClash:
+    def test_clashing_teams_raise_value_error(self, tmp_path, monkeypatch):
+        monkeypatch.setenv("DATABASE_URL", f"sqlite:///{tmp_path}/test.db")
+
+        import importlib
+
+        import hasl_calendar.models as models_mod
+        import hasl_calendar.scraper as scraper_mod
+
+        importlib.reload(models_mod)
+        models_mod.init_db()
+        importlib.reload(scraper_mod)
+
+        # "HASL FC" and "hasl fc" both slugify to "hasl-fc"
+        events = [
+            {
+                "id": "aaa0000000000001",
+                "date": "2099-01-01",
+                "time": "21:00",
+                "datetime_local": "2099-01-01T21:00:00",
+                "timezone": "America/New_York",
+                "location": "Sinatra Park",
+                "league": "S1",
+                "home_team_id": 1,
+                "home_team_name": "HASL FC",
+                "away_team_id": 2,
+                "away_team_name": "hasl fc",
+            }
+        ]
+
+        with pytest.raises(ValueError, match="Slug clash"):
+            scraper_mod.sync_to_db(events)
 
 
 class TestGameId:

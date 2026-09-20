@@ -18,6 +18,9 @@ class Team(Base):
 
     id = Column(Integer, primary_key=True)  # numeric ID from aplsteam{id}.htm
     name = Column(String, nullable=False)
+    slug = Column(
+        String, nullable=False, unique=True
+    )  # set once on insert, used in calendar URLs
 
     home_games = relationship(
         "Game", foreign_keys="Game.home_team_id", back_populates="home_team"
@@ -27,7 +30,7 @@ class Team(Base):
     )
 
     def __repr__(self):
-        return f"<Team id={self.id} name={self.name!r}>"
+        return f"<Team id={self.id} name={self.name!r} slug={self.slug!r}>"
 
 
 class Game(Base):

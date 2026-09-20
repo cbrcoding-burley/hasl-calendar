@@ -41,19 +41,19 @@ def _require_sync_auth(f):
 def list_teams():
     with Session() as session:
         teams = session.query(Team).order_by(Team.name).all()
-        return jsonify([{"id": t.id, "name": t.name} for t in teams])
+        return jsonify([{"id": t.id, "name": t.name, "slug": t.slug} for t in teams])
 
 
-@app.get("/calendar/<int:team_id>.ics")
-def team_calendar(team_id: int):
+@app.get("/calendar/<slug>.ics")
+def team_calendar(slug: str):
     with Session() as session:
-        team = session.get(Team, team_id)
+        team = session.query(Team).filter_by(slug=slug).first()
         if team is None:
             abort(404)
 
         games = (
             session.query(Game)
-            .filter((Game.home_team_id == team_id) | (Game.away_team_id == team_id))
+            .filter((Game.home_team_id == team.id) | (Game.away_team_id == team.id))
             .order_by(Game.date, Game.time)
             .all()
         )
@@ -64,7 +64,7 @@ def team_calendar(team_id: int):
         ical_bytes,
         mimetype="text/calendar",
         headers={
-            "Content-Disposition": f'attachment; filename="{team_id}.ics"',
+            "Content-Disposition": f'attachment; filename="{slug}.ics"',
             "Cache-Control": "no-cache",
         },
     )
