@@ -1,9 +1,11 @@
 import hashlib
 import json
 import logging
+import os
 import re
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 
+import jwt
 import requests
 from bs4 import BeautifulSoup
 
@@ -203,8 +205,21 @@ def sync_schedule() -> None:
     sync_to_db(events)
 
 
-def sync_via_api(base_url: str, api_key: str) -> None:
-    headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
+def _make_sync_token() -> str:
+    private_key = os.environ["SYNC_PRIVATE_KEY"]
+    now = datetime.now(tz=timezone.utc)
+    return jwt.encode(
+        {"sub": "scraper", "iat": now, "exp": now + timedelta(minutes=5)},
+        private_key,
+        algorithm="RS256",
+    )
+
+
+def sync_via_api(base_url: str) -> None:
+    headers = {
+        "Authorization": f"Bearer {_make_sync_token()}",
+        "Content-Type": "application/json",
+    }
     base_url = base_url.rstrip("/")
 
     state = requests.get(f"{base_url}/sync/state", headers=headers, timeout=15)

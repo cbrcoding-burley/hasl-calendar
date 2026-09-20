@@ -3,6 +3,7 @@ import logging
 import os
 from datetime import date
 
+import jwt
 from flask import Flask, Response, abort, jsonify, request
 
 from .ical import build_feed
@@ -23,8 +24,13 @@ start_scheduler(app)
 def _require_sync_auth(f):
     @functools.wraps(f)
     def decorated(*args, **kwargs):
-        token = os.environ.get("SYNC_API_KEY")
-        if not token or request.headers.get("Authorization") != f"Bearer {token}":
+        public_key = os.environ.get("SYNC_PUBLIC_KEY")
+        auth = request.headers.get("Authorization", "")
+        if not public_key or not auth.startswith("Bearer "):
+            abort(401)
+        try:
+            jwt.decode(auth.removeprefix("Bearer "), public_key, algorithms=["RS256"])
+        except jwt.PyJWTError:
             abort(401)
         return f(*args, **kwargs)
 
