@@ -22,8 +22,13 @@ Scrapes the [HASL](https://www.allprosoftware.net/HASLSUMMER23/aplsmasterschedul
 
 ```bash
 uv sync
-uv run python main.py          # one-off scrape to stdout
+uv run python main.py          # one-off scrape + DB seed
+
+# Dev server (auto-reloads, debug mode)
 uv run flask --app hasl_calendar.app run --debug
+
+# Production-like server (matches railway.toml)
+uv run gunicorn 'hasl_calendar.app:app' --bind 0.0.0.0:8000 --workers 2
 ```
 
 ## Environment variables
