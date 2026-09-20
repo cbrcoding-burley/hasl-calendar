@@ -1,0 +1,24 @@
+# database
+*.db
+*.db-shm
+*.db-wal
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.python-version
+dist/
+*.egg-info/
+.venv/
+
+# uv
+.uv-cache/
+
+# IDE
+.idea/
+.vscode/
+
+# env
+.env
+.env.*
