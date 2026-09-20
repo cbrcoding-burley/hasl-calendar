@@ -1,5 +1,6 @@
 import pytest
 from icalendar import Calendar
+
 from tests.conftest import make_game, make_team
 
 
@@ -29,6 +30,7 @@ def single_game(home_team, away_team):
 @pytest.fixture
 def feed_bytes(home_team, single_game):
     from hasl_calendar.ical import build_feed
+
     return build_feed(home_team, [single_game])
 
 
@@ -53,6 +55,7 @@ class TestBuildFeedStructure:
 
     def test_empty_game_list_produces_valid_feed(self, home_team):
         from hasl_calendar.ical import build_feed
+
         cal_bytes = build_feed(home_team, [])
         cal = Calendar.from_ical(cal_bytes)
         events = [c for c in cal.walk() if c.name == "VEVENT"]
@@ -97,6 +100,7 @@ class TestBuildFeedEvents:
 
     def test_multiple_games_all_present(self, home_team, away_team):
         from hasl_calendar.ical import build_feed
+
         dates = ["2026-09-08", "2026-09-15", "2026-09-22"]
         games = [
             make_game(f"id{i}", home_team, away_team, date=dates[i], time="21:00")
@@ -108,6 +112,7 @@ class TestBuildFeedEvents:
 
     def test_event_uids_are_unique(self, home_team, away_team):
         from hasl_calendar.ical import build_feed
+
         dates = ["2026-09-08", "2026-09-15", "2026-09-22"]
         games = [
             make_game(f"id{i}", home_team, away_team, date=dates[i], time="21:00")

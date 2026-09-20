@@ -1,4 +1,5 @@
 """Shared fixtures. All HTML is static — no network calls anywhere in the test suite."""
+
 from types import SimpleNamespace
 
 import pytest
@@ -65,6 +66,7 @@ def schedule_html():
 @pytest.fixture
 def parsed_schedule(schedule_html):
     from hasl_calendar.scraper import parse_html
+
     events, league_index = parse_html(schedule_html)
     return events, league_index
 

@@ -15,7 +15,9 @@ def setup():
 def list_teams():
     with Session() as session:
         teams = session.query(Team).order_by(Team.name).all()
-        return jsonify([{"id": t.id, "name": t.name, "league": t.league} for t in teams])
+        return jsonify(
+            [{"id": t.id, "name": t.name, "league": t.league} for t in teams]
+        )
 
 
 @app.get("/calendar/<int:team_id>.ics")

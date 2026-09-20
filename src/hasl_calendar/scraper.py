@@ -123,7 +123,7 @@ def parse_html(html: str) -> tuple[list[dict], dict[str, str]]:
 
 
 def sync_to_db(events: list[dict]) -> None:
-    from .models import init_db, Session, Game, Team
+    from .models import Game, Session, Team, init_db
 
     init_db()
     with Session() as session:

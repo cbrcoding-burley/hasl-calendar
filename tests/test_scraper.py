@@ -1,4 +1,3 @@
-import pytest
 from hasl_calendar.scraper import _game_id, parse_html
 from tests.conftest import SCHEDULE_HTML
 
@@ -83,13 +82,19 @@ class TestGameId:
         assert a == b
 
     def test_different_date_produces_different_id(self):
-        assert _game_id("2026-09-08", "21:00", 654, 655) != _game_id("2026-09-09", "21:00", 654, 655)
+        assert _game_id("2026-09-08", "21:00", 654, 655) != _game_id(
+            "2026-09-09", "21:00", 654, 655
+        )
 
     def test_different_time_produces_different_id(self):
-        assert _game_id("2026-09-08", "21:00", 654, 655) != _game_id("2026-09-08", "22:00", 654, 655)
+        assert _game_id("2026-09-08", "21:00", 654, 655) != _game_id(
+            "2026-09-08", "22:00", 654, 655
+        )
 
     def test_different_teams_produce_different_id(self):
-        assert _game_id("2026-09-08", "21:00", 654, 655) != _game_id("2026-09-08", "21:00", 656, 658)
+        assert _game_id("2026-09-08", "21:00", 654, 655) != _game_id(
+            "2026-09-08", "21:00", 656, 658
+        )
 
     def test_location_change_does_not_change_id(self):
         # Rescheduling a venue updates the event in place rather than deleting+recreating it

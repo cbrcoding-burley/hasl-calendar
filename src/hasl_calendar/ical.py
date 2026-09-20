@@ -20,9 +20,7 @@ def build_feed(team, games) -> bytes:
         evt = Event()
         evt.add("uid", vText(f"{game.id}@hasl-calendar"))
 
-        start = datetime.fromisoformat(game.datetime_local).replace(
-            tzinfo=_eastern()
-        )
+        start = datetime.fromisoformat(game.datetime_local).replace(tzinfo=_eastern())
         end = start + timedelta(hours=1)
 
         evt.add("dtstart", start)
@@ -46,4 +44,5 @@ def _eastern():
     # EDT (UTC-4) covers the bulk of the HASL season (through Nov 1 DST change).
     # For correctness across the Nov 1 DST boundary, swap to zoneinfo when deploying.
     import zoneinfo
+
     return zoneinfo.ZoneInfo("America/New_York")
