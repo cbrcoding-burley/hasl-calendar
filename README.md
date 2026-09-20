@@ -34,7 +34,8 @@ uv run flask --app hasl_calendar.app run --debug
 
 ## Deployment
 
-Deployed to [Railway](https://railway.app) via GitLab CI on pushes to `main`.
+Deployed to [Railway](https://railway.app) via GitHub Actions on pushes to `main`.
 The database lives on a Railway volume mounted at `/data`.
 
-See `.gitlab-ci.yml` and `railway.toml` for details.
+See [`railway.toml`](railway.toml), [`.github/workflows/ci.yml`](.github/workflows/ci.yml),
+and [`docs/railway.md`](docs/railway.md) for setup and configuration details.
