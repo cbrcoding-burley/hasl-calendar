@@ -22,7 +22,7 @@ Scrapes the [HASL](https://www.allprosoftware.net/HASLSUMMER23/aplsmasterschedul
 
 ```bash
 uv sync
-uv run python main.py          # one-off scrape + DB seed
+uv run python seed.py          # one-off scrape + DB seed
 
 # Dev server (auto-reloads, debug mode)
 uv run flask --app hasl_calendar.app run --debug
