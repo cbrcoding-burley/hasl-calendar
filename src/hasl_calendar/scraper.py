@@ -38,16 +38,12 @@ def _parse_header(text: str) -> tuple[str, str] | None:
     return f"{month_day.rstrip(',')} {year}", location.strip()
 
 
-def _extract_team(cell) -> tuple[str, int | None]:
-    """Return (name, team_id) from a team cell element."""
+def _extract_team(cell) -> str:
+    """Return team name from a team cell element."""
     a = cell.find("a")
     if a:
-        name = a.get_text(strip=True)
-        href = a.get("href", "")
-        m = _TEAM_ID_REGEX.search(href)
-        team_id = int(m.group(1)) if m else None
-        return name, team_id
-    return cell.get_text(strip=True), None
+        return a.get_text(strip=True)
+    return cell.get_text(strip=True)
 
 
 def parse_league_index(soup: BeautifulSoup) -> dict[str, str]:
@@ -62,8 +58,8 @@ def parse_league_index(soup: BeautifulSoup) -> dict[str, str]:
     return leagues
 
 
-def _game_id(date: str, time: str, home_id: int | None, away_id: int | None) -> str:
-    key = f"{date}|{time}|{home_id}|{away_id}"
+def _game_id(date: str, time: str, home_slug: str, away_slug: str) -> str:
+    key = f"{date}|{time}|{home_slug}|{away_slug}"
     return hashlib.sha1(key.encode()).hexdigest()[:16]
 
 
@@ -108,14 +104,21 @@ def parse_html(html: str) -> tuple[list[dict], dict[str, str]]:
         if len(cells) == 5 and texts[0] == "" and current_date_str:
             _, time_str, league_code = texts[0], texts[1], texts[2]
             league = league_index.get(league_code, league_code)
-            home_team_name, home_team_id = _extract_team(cells[3])
-            away_team_name, away_team_id = _extract_team(cells[4])
+            home_team_name = _extract_team(cells[3])
+            away_team_name = _extract_team(cells[4])
+            home_team_slug = _slugify(home_team_name)
+            away_team_slug = _slugify(away_team_name)
 
             try:
                 dt = datetime.strptime(
                     f"{current_date_str} {time_str.upper()}", "%B %d %Y %I:%M %p"
                 )
             except ValueError:
+                log.warning(
+                    "Failed to parse datetime for row: date=%r time=%r — skipping",
+                    current_date_str,
+                    time_str,
+                )
                 continue
 
             events.append(
@@ -123,8 +126,8 @@ def parse_html(html: str) -> tuple[list[dict], dict[str, str]]:
                     "id": _game_id(
                         dt.strftime("%Y-%m-%d"),
                         dt.strftime("%H:%M"),
-                        home_team_id,
-                        away_team_id,
+                        home_team_slug,
+                        away_team_slug,
                     ),
                     "date": dt.strftime("%Y-%m-%d"),
                     "time": dt.strftime("%H:%M"),
@@ -132,20 +135,20 @@ def parse_html(html: str) -> tuple[list[dict], dict[str, str]]:
                     "timezone": TIMEZONE,
                     "location": current_location,
                     "league": league,
-                    "home_team_id": home_team_id,
+                    "home_team_slug": home_team_slug,
                     "home_team_name": home_team_name,
-                    "away_team_id": away_team_id,
+                    "away_team_slug": away_team_slug,
                     "away_team_name": away_team_name,
                 }
             )
 
-    unique_team_ids = {e["home_team_id"] for e in events} | {
-        e["away_team_id"] for e in events
+    unique_team_slugs = {e["home_team_slug"] for e in events} | {
+        e["away_team_slug"] for e in events
     }
     log.info(
         "Parsed %d events, %d unique teams",
         len(events),
-        len(unique_team_ids),
+        len(unique_team_slugs),
     )
     return events, league_index
 
@@ -158,22 +161,13 @@ def sync_to_db(events: list[dict]) -> None:
 
     with Session() as session:
         for event in events:
-            for team_id, team_name in [
-                (event["home_team_id"], event["home_team_name"]),
-                (event["away_team_id"], event["away_team_name"]),
+            for team_slug, team_name in [
+                (event["home_team_slug"], event["home_team_name"]),
+                (event["away_team_slug"], event["away_team_name"]),
             ]:
-                if team_id is None:
-                    continue
-                team = session.get(Team, team_id)
+                team = session.get(Team, team_slug)
                 if team is None:
-                    slug = _slugify(team_name)
-                    clash = session.query(Team).filter_by(slug=slug).first()
-                    if clash:
-                        raise ValueError(
-                            f"Slug clash: '{team_name}' → '{slug}' already used by "
-                            f"'{clash.name}' (id={clash.id})"
-                        )
-                    session.add(Team(id=team_id, name=team_name, slug=slug))
+                    session.add(Team(slug=team_slug, name=team_name))
                     teams_added += 1
                 elif team.name != team_name:
                     team.name = team_name
@@ -190,8 +184,8 @@ def sync_to_db(events: list[dict]) -> None:
                         timezone=event["timezone"],
                         location=event["location"],
                         league=event["league"],
-                        home_team_id=event["home_team_id"],
-                        away_team_id=event["away_team_id"],
+                        home_team_slug=event["home_team_slug"],
+                        away_team_slug=event["away_team_slug"],
                     )
                 )
                 games_added += 1

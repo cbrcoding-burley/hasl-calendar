@@ -73,10 +73,10 @@ EVENTS = [
         "datetime_local": "2099-01-01T21:00:00",
         "timezone": "America/New_York",
         "location": "Sinatra Park",
-        "league": "S3",
-        "home_team_id": 1,
+        "league": "MEN'S REC LEAGUE",
+        "home_team_slug": "home-fc",
         "home_team_name": "Home FC",
-        "away_team_id": 2,
+        "away_team_slug": "away-fc",
         "away_team_name": "Away FC",
     }
 ]

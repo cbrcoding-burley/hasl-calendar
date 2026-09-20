@@ -71,10 +71,10 @@ def parsed_schedule(schedule_html):
     return events, league_index
 
 
-def make_team(id: int, name: str, league: str = "S3", slug: str = None):
+def make_team(name: str, slug: str = None):
     from hasl_calendar.scraper import _slugify
 
-    return SimpleNamespace(id=id, name=name, league=league, slug=slug or _slugify(name))
+    return SimpleNamespace(name=name, slug=slug or _slugify(name))
 
 
 def make_game(
@@ -84,7 +84,7 @@ def make_game(
     date: str = "2026-09-08",
     time: str = "21:00",
     location: str = "FRANK SINATRA PARK - NORTH",
-    league: str = "S3",
+    league: str = "MEN'S REC LEAGUE",
 ):
     return SimpleNamespace(
         id=id,
@@ -96,6 +96,6 @@ def make_game(
         league=league,
         home_team=home_team,
         away_team=away_team,
-        home_team_id=home_team.id,
-        away_team_id=away_team.id,
+        home_team_slug=home_team.slug,
+        away_team_slug=away_team.slug,
     )

@@ -1,5 +1,3 @@
-import pytest
-
 from hasl_calendar.scraper import _game_id, _slugify, parse_html
 from tests.conftest import SCHEDULE_HTML
 
@@ -42,10 +40,10 @@ class TestParseHtml:
         assert events[0]["home_team_name"] == "Soccer Monday's"
         assert events[0]["away_team_name"] == "TEK FC"
 
-    def test_team_ids_parsed_from_hrefs(self, parsed_schedule):
+    def test_team_slugs_derived_from_names(self, parsed_schedule):
         events, _ = parsed_schedule
-        assert events[0]["home_team_id"] == 654
-        assert events[0]["away_team_id"] == 655
+        assert events[0]["home_team_slug"] == "soccer-monday-s"
+        assert events[0]["away_team_slug"] == "tek-fc"
 
     def test_second_date_section_parsed(self, parsed_schedule):
         events, _ = parsed_schedule
@@ -95,59 +93,25 @@ class TestSlugify:
         assert _slugify("Clare Bears") == _slugify("Clare Bears")
 
 
-class TestSlugClash:
-    def test_clashing_teams_raise_value_error(self, tmp_path, monkeypatch):
-        monkeypatch.setenv("DATABASE_URL", f"sqlite:///{tmp_path}/test.db")
-
-        import importlib
-
-        import hasl_calendar.models as models_mod
-        import hasl_calendar.scraper as scraper_mod
-
-        importlib.reload(models_mod)
-        models_mod.init_db()
-        importlib.reload(scraper_mod)
-
-        # "HASL FC" and "hasl fc" both slugify to "hasl-fc"
-        events = [
-            {
-                "id": "aaa0000000000001",
-                "date": "2099-01-01",
-                "time": "21:00",
-                "datetime_local": "2099-01-01T21:00:00",
-                "timezone": "America/New_York",
-                "location": "Sinatra Park",
-                "league": "S1",
-                "home_team_id": 1,
-                "home_team_name": "HASL FC",
-                "away_team_id": 2,
-                "away_team_name": "hasl fc",
-            }
-        ]
-
-        with pytest.raises(ValueError, match="Slug clash"):
-            scraper_mod.sync_to_db(events)
-
-
 class TestGameId:
     def test_same_inputs_produce_same_id(self):
-        a = _game_id("2026-09-08", "21:00", 654, 655)
-        b = _game_id("2026-09-08", "21:00", 654, 655)
+        a = _game_id("2026-09-08", "21:00", "soccer-monday-s", "tek-fc")
+        b = _game_id("2026-09-08", "21:00", "soccer-monday-s", "tek-fc")
         assert a == b
 
     def test_different_date_produces_different_id(self):
-        assert _game_id("2026-09-08", "21:00", 654, 655) != _game_id(
-            "2026-09-09", "21:00", 654, 655
+        assert _game_id("2026-09-08", "21:00", "soccer-monday-s", "tek-fc") != _game_id(
+            "2026-09-09", "21:00", "soccer-monday-s", "tek-fc"
         )
 
     def test_different_time_produces_different_id(self):
-        assert _game_id("2026-09-08", "21:00", 654, 655) != _game_id(
-            "2026-09-08", "22:00", 654, 655
+        assert _game_id("2026-09-08", "21:00", "soccer-monday-s", "tek-fc") != _game_id(
+            "2026-09-08", "22:00", "soccer-monday-s", "tek-fc"
         )
 
     def test_different_teams_produce_different_id(self):
-        assert _game_id("2026-09-08", "21:00", 654, 655) != _game_id(
-            "2026-09-08", "21:00", 656, 658
+        assert _game_id("2026-09-08", "21:00", "soccer-monday-s", "tek-fc") != _game_id(
+            "2026-09-08", "21:00", "absent-fathers", "teds-lasso"
         )
 
     def test_location_change_does_not_change_id(self):
@@ -161,6 +125,6 @@ class TestGameId:
         assert events_north[0]["id"] == events_south[0]["id"]
 
     def test_id_is_16_hex_chars(self):
-        game_id = _game_id("2026-09-08", "21:00", 654, 655)
+        game_id = _game_id("2026-09-08", "21:00", "soccer-monday-s", "tek-fc")
         assert len(game_id) == 16
         assert all(c in "0123456789abcdef" for c in game_id)

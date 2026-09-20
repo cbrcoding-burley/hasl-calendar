@@ -41,7 +41,7 @@ def _require_sync_auth(f):
 def list_teams():
     with Session() as session:
         teams = session.query(Team).order_by(Team.name).all()
-        return jsonify([{"id": t.id, "name": t.name, "slug": t.slug} for t in teams])
+        return jsonify([{"slug": t.slug, "name": t.name} for t in teams])
 
 
 @app.get("/calendar/<slug>.ics")
@@ -53,7 +53,7 @@ def team_calendar(slug: str):
 
         games = (
             session.query(Game)
-            .filter((Game.home_team_id == team.id) | (Game.away_team_id == team.id))
+            .filter((Game.home_team_slug == slug) | (Game.away_team_slug == slug))
             .order_by(Game.date, Game.time)
             .all()
         )
