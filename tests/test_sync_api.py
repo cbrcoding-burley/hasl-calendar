@@ -44,7 +44,6 @@ def set_public_key(monkeypatch):
 @pytest.fixture
 def client(tmp_path, monkeypatch):
     monkeypatch.setenv("DATABASE_URL", f"sqlite:///{tmp_path}/test.db")
-    monkeypatch.setattr("hasl_calendar.scheduler.start", lambda app: None)
 
     import importlib
 

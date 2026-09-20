@@ -8,7 +8,6 @@ from flask import Flask, Response, abort, jsonify, request
 
 from .ical import build_feed
 from .models import Game, Session, Team
-from .scheduler import start as start_scheduler
 from .scraper import sync_to_db
 
 logging.basicConfig(
@@ -18,8 +17,6 @@ logging.basicConfig(
 log = logging.getLogger(__name__)
 
 app = Flask(__name__)
-
-start_scheduler(app)
 
 
 def _require_sync_auth(f):
