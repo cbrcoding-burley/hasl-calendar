@@ -33,7 +33,7 @@ class TestParseHtml:
 
     def test_first_event_league(self, parsed_schedule):
         events, _ = parsed_schedule
-        assert events[0]["league"] == "S3"
+        assert events[0]["league"] == "MEN'S REC LEAGUE"
 
     def test_first_event_teams(self, parsed_schedule):
         events, _ = parsed_schedule

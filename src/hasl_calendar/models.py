@@ -18,7 +18,6 @@ class Team(Base):
 
     id = Column(Integer, primary_key=True)  # numeric ID from aplsteam{id}.htm
     name = Column(String, nullable=False)
-    league = Column(String, nullable=True)  # S1-S4; populated later
 
     home_games = relationship(
         "Game", foreign_keys="Game.home_team_id", back_populates="home_team"
@@ -41,7 +40,7 @@ class Game(Base):
     datetime_local = Column(String, nullable=False)  # ISO 8601 naive local
     timezone = Column(String, nullable=False, default="America/New_York")
     location = Column(String, nullable=False)
-    league = Column(String(2), nullable=False)  # S1-S4
+    league = Column(String, nullable=False)  # full league name e.g. "Men's Rec League"
     home_team_id = Column(Integer, ForeignKey("teams.id"), nullable=False)
     away_team_id = Column(Integer, ForeignKey("teams.id"), nullable=False)
 

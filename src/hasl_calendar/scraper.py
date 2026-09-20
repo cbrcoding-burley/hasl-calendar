@@ -99,7 +99,8 @@ def parse_html(html: str) -> tuple[list[dict], dict[str, str]]:
 
         # Game row: blank | time | league | home_team | vs away_team
         if len(cells) == 5 and texts[0] == "" and current_date_str:
-            _, time_str, league = texts[0], texts[1], texts[2]
+            _, time_str, league_code = texts[0], texts[1], texts[2]
+            league = league_index.get(league_code, league_code)
             home_team_name, home_team_id = _extract_team(cells[3])
             away_team_name, away_team_id = _extract_team(cells[4])
 
@@ -201,7 +202,8 @@ def sync_to_db(events: list[dict]) -> None:
 
 
 def sync_schedule() -> None:
-    events, _ = fetch_and_parse()
+    events, league_index = fetch_and_parse()
+    log.info("Leagues: %s", list(league_index.values()))
     sync_to_db(events)
 
 
@@ -226,7 +228,8 @@ def sync_via_api(base_url: str) -> None:
     state.raise_for_status()
     current_ids = set(state.json()["game_ids"])
 
-    events, _ = fetch_and_parse()
+    events, league_index = fetch_and_parse()
+    log.info("Leagues in scraped data: %s", list(league_index.values()))
     parsed_ids = {e["id"] for e in events}
 
     resp = requests.post(

@@ -6,12 +6,12 @@ from tests.conftest import make_game, make_team
 
 @pytest.fixture
 def home_team():
-    return make_team(654, "Soccer Monday's", "S3")
+    return make_team(654, "Soccer Monday's")
 
 
 @pytest.fixture
 def away_team():
-    return make_team(655, "TEK FC", "S3")
+    return make_team(655, "TEK FC")
 
 
 @pytest.fixture
@@ -23,7 +23,7 @@ def single_game(home_team, away_team):
         date="2026-09-08",
         time="21:00",
         location="FRANK SINATRA PARK - NORTH",
-        league="S3",
+        league="MEN'S REC LEAGUE",
     )
 
 
