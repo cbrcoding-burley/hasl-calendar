@@ -15,6 +15,7 @@ logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s %(levelname)s %(name)s %(message)s",
 )
+log = logging.getLogger(__name__)
 
 app = Flask(__name__)
 
@@ -81,6 +82,12 @@ def sync_state():
 @app.post("/sync/upsert")
 @_require_sync_auth
 def sync_upsert():
+    if not request.is_json:
+        log.warning(
+            "sync_upsert called with non-JSON body (content-type: %s)",
+            request.content_type,
+        )
+        abort(400)
     events = request.json.get("events", [])
     sync_to_db(events)
     return "", 204
@@ -89,6 +96,12 @@ def sync_upsert():
 @app.post("/sync/delete")
 @_require_sync_auth
 def sync_delete():
+    if not request.is_json:
+        log.warning(
+            "sync_delete called with non-JSON body (content-type: %s)",
+            request.content_type,
+        )
+        abort(400)
     game_ids = request.json.get("game_ids", [])
     today = date.today().isoformat()
     with Session() as session:

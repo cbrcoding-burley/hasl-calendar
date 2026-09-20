@@ -103,7 +103,12 @@ def parse_html(html: str) -> tuple[list[dict], dict[str, str]]:
         # Game row: blank | time | league | home_team | vs away_team
         if len(cells) == 5 and texts[0] == "" and current_date_str:
             _, time_str, league_code = texts[0], texts[1], texts[2]
-            league = league_index.get(league_code, league_code)
+            league = league_index.get(league_code)
+            if league is None:
+                log.warning(
+                    "Unknown league code %r — defaulting to 'HASL'", league_code
+                )
+                league = "HASL"
             home_team_name = _extract_team(cells[3])
             away_team_name = _extract_team(cells[4])
             home_team_slug = _slugify(home_team_name)
@@ -145,6 +150,8 @@ def parse_html(html: str) -> tuple[list[dict], dict[str, str]]:
     unique_team_slugs = {e["home_team_slug"] for e in events} | {
         e["away_team_slug"] for e in events
     }
+    if not events:
+        raise ValueError("Parsed 0 events — page structure may have changed")
     log.info(
         "Parsed %d events, %d unique teams",
         len(events),

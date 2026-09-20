@@ -18,6 +18,11 @@ class TestParseLeagueIndex:
 
 
 class TestParseHtml:
+    def test_unknown_league_code_defaults_to_hasl(self):
+        html = SCHEDULE_HTML.replace("<td>S3</td>", "<td>S9</td>")
+        events, _ = parse_html(html)
+        assert events[0]["league"] == "HASL"
+
     def test_event_count(self, parsed_schedule):
         events, _ = parsed_schedule
         assert len(events) == 3
