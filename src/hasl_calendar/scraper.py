@@ -198,6 +198,11 @@ def sync_to_db(events: list[dict]) -> None:
     )
 
 
+def sync_schedule() -> None:
+    events, _ = fetch_and_parse()
+    sync_to_db(events)
+
+
 if __name__ == "__main__":
     events, league_index = fetch_and_parse()
     print("League index:", league_index)
