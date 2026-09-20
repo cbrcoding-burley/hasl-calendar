@@ -203,6 +203,38 @@ def sync_schedule() -> None:
     sync_to_db(events)
 
 
+def sync_via_api(base_url: str, api_key: str) -> None:
+    headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
+    base_url = base_url.rstrip("/")
+
+    state = requests.get(f"{base_url}/sync/state", headers=headers, timeout=15)
+    state.raise_for_status()
+    current_ids = set(state.json()["game_ids"])
+
+    events, _ = fetch_and_parse()
+    parsed_ids = {e["id"] for e in events}
+
+    resp = requests.post(
+        f"{base_url}/sync/upsert", json={"events": events}, headers=headers, timeout=30
+    )
+    resp.raise_for_status()
+    log.info("Upserted %d events", len(events))
+
+    orphan_ids = list(current_ids - parsed_ids)
+    if orphan_ids:
+        resp = requests.post(
+            f"{base_url}/sync/delete",
+            json={"game_ids": orphan_ids},
+            headers=headers,
+            timeout=15,
+        )
+        resp.raise_for_status()
+        log.info(
+            "Submitted %d orphan IDs for deletion (future-only filtered server-side)",
+            len(orphan_ids),
+        )
+
+
 if __name__ == "__main__":
     events, league_index = fetch_and_parse()
     print("League index:", league_index)

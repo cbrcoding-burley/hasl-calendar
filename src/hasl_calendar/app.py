@@ -1,10 +1,14 @@
+import functools
 import logging
+import os
+from datetime import date
 
-from flask import Flask, Response, abort, jsonify
+from flask import Flask, Response, abort, jsonify, request
 
 from .ical import build_feed
 from .models import Game, Session, Team
 from .scheduler import start as start_scheduler
+from .scraper import sync_to_db
 
 logging.basicConfig(
     level=logging.INFO,
@@ -14,6 +18,17 @@ logging.basicConfig(
 app = Flask(__name__)
 
 start_scheduler(app)
+
+
+def _require_sync_auth(f):
+    @functools.wraps(f)
+    def decorated(*args, **kwargs):
+        token = os.environ.get("SYNC_API_KEY")
+        if not token or request.headers.get("Authorization") != f"Bearer {token}":
+            abort(401)
+        return f(*args, **kwargs)
+
+    return decorated
 
 
 @app.get("/teams")
@@ -49,6 +64,36 @@ def team_calendar(team_id: int):
             "Cache-Control": "no-cache",
         },
     )
+
+
+@app.get("/sync/state")
+@_require_sync_auth
+def sync_state():
+    with Session() as session:
+        game_ids = [row[0] for row in session.query(Game.id).all()]
+        return jsonify({"game_ids": game_ids})
+
+
+@app.post("/sync/upsert")
+@_require_sync_auth
+def sync_upsert():
+    events = request.json.get("events", [])
+    sync_to_db(events)
+    return "", 204
+
+
+@app.post("/sync/delete")
+@_require_sync_auth
+def sync_delete():
+    game_ids = request.json.get("game_ids", [])
+    today = date.today().isoformat()
+    with Session() as session:
+        session.query(Game).filter(
+            Game.id.in_(game_ids),
+            Game.date > today,
+        ).delete(synchronize_session=False)
+        session.commit()
+    return "", 204
 
 
 if __name__ == "__main__":
