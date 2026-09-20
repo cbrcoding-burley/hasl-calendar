@@ -75,9 +75,13 @@ class TestBuildFeedEvents:
         events = [c for c in parsed_feed.walk() if c.name == "VEVENT"]
         assert str(events[0]["summary"]) == f"{home_team.name} vs {away_team.name}"
 
-    def test_location_is_title_cased(self, parsed_feed):
+    def test_location_is_street_address(self, parsed_feed):
         events = [c for c in parsed_feed.walk() if c.name == "VEVENT"]
-        assert str(events[0]["location"]) == "Frank Sinatra Park - North"
+        assert str(events[0]["location"]) == "398 Sinatra Dr, Hoboken, NJ 07030"
+
+    def test_description_includes_field_direction(self, parsed_feed):
+        events = [c for c in parsed_feed.walk() if c.name == "VEVENT"]
+        assert "North" in str(events[0]["description"])
 
     def test_dtstart_correct_date_and_time(self, parsed_feed):
         events = [c for c in parsed_feed.walk() if c.name == "VEVENT"]
