@@ -1,7 +1,14 @@
+import logging
+
 from flask import Flask, Response, abort, jsonify
 
 from .ical import build_feed
 from .models import Game, Session, Team, init_db
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s %(levelname)s %(name)s %(message)s",
+)
 
 app = Flask(__name__)
 

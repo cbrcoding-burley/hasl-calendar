@@ -1,7 +1,13 @@
 import json
+import logging
 
 from hasl_calendar.models import Game, Session, Team, init_db
 from hasl_calendar.scraper import fetch_and_parse, sync_to_db
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s %(levelname)s %(name)s %(message)s",
+)
 
 if __name__ == "__main__":
     print("Fetching schedule...")

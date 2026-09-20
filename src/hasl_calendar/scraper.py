@@ -1,10 +1,13 @@
 import hashlib
 import json
+import logging
 import re
 from datetime import datetime
 
 import requests
 from bs4 import BeautifulSoup
+
+log = logging.getLogger(__name__)
 
 SCHEDULE_URL = "https://www.allprosoftware.net/HASLSUMMER23/aplsmasterschedule.htm"
 TIMEZONE = "America/New_York"
@@ -57,9 +60,16 @@ def _game_id(date: str, time: str, home_id: int | None, away_id: int | None) -> 
 
 def fetch_and_parse(url: str = SCHEDULE_URL) -> tuple[list[dict], dict[str, str]]:
     """Return (events, league_index) where league_index maps S-code -> league name."""
+    log.info("Fetching schedule from %s", url)
     resp = requests.get(url, timeout=15)
     resp.raise_for_status()
-    return parse_html(resp.text)
+    events, league_index = parse_html(resp.text)
+    log.info(
+        "Fetch complete: %d events across %d leagues",
+        len(events),
+        len(league_index),
+    )
+    return events, league_index
 
 
 def parse_html(html: str) -> tuple[list[dict], dict[str, str]]:
@@ -119,6 +129,14 @@ def parse_html(html: str) -> tuple[list[dict], dict[str, str]]:
                 }
             )
 
+    unique_team_ids = {e["home_team_id"] for e in events} | {
+        e["away_team_id"] for e in events
+    }
+    log.info(
+        "Parsed %d events, %d unique teams",
+        len(events),
+        len(unique_team_ids),
+    )
     return events, league_index
 
 
@@ -126,9 +144,10 @@ def sync_to_db(events: list[dict]) -> None:
     from .models import Game, Session, Team, init_db
 
     init_db()
+    teams_added = teams_updated = games_added = games_updated = 0
+
     with Session() as session:
         for event in events:
-            # Upsert home team
             for team_id, team_name in [
                 (event["home_team_id"], event["home_team_name"]),
                 (event["away_team_id"], event["away_team_name"]),
@@ -138,10 +157,11 @@ def sync_to_db(events: list[dict]) -> None:
                 team = session.get(Team, team_id)
                 if team is None:
                     session.add(Team(id=team_id, name=team_name))
+                    teams_added += 1
                 elif team.name != team_name:
                     team.name = team_name
+                    teams_updated += 1
 
-            # Upsert game
             game = session.get(Game, event["id"])
             if game is None:
                 session.add(
@@ -157,6 +177,7 @@ def sync_to_db(events: list[dict]) -> None:
                         away_team_id=event["away_team_id"],
                     )
                 )
+                games_added += 1
             else:
                 # Update mutable fields in case the schedule changed
                 game.date = event["date"]
@@ -164,8 +185,17 @@ def sync_to_db(events: list[dict]) -> None:
                 game.datetime_local = event["datetime_local"]
                 game.location = event["location"]
                 game.league = event["league"]
+                games_updated += 1
 
         session.commit()
+
+    log.info(
+        "DB sync complete: %d teams added, %d updated; %d games added, %d updated",
+        teams_added,
+        teams_updated,
+        games_added,
+        games_updated,
+    )
 
 
 if __name__ == "__main__":
