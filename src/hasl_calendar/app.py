@@ -1,6 +1,7 @@
-from flask import Flask
+from flask import Flask, Response, abort, jsonify
 
-from .models import init_db
+from .ical import build_feed
+from .models import Game, Session, Team, init_db
 
 app = Flask(__name__)
 
@@ -10,9 +11,37 @@ def setup():
     init_db()
 
 
-# Calendar feed routes will live here
-# GET /calendar/<team_name>.ics  -> iCal feed for a team
-# GET /teams                     -> list all known teams
+@app.get("/teams")
+def list_teams():
+    with Session() as session:
+        teams = session.query(Team).order_by(Team.name).all()
+        return jsonify([{"id": t.id, "name": t.name, "league": t.league} for t in teams])
+
+
+@app.get("/calendar/<int:team_id>.ics")
+def team_calendar(team_id: int):
+    with Session() as session:
+        team = session.get(Team, team_id)
+        if team is None:
+            abort(404)
+
+        games = (
+            session.query(Game)
+            .filter((Game.home_team_id == team_id) | (Game.away_team_id == team_id))
+            .order_by(Game.date, Game.time)
+            .all()
+        )
+
+        ical_bytes = build_feed(team, games)
+
+    return Response(
+        ical_bytes,
+        mimetype="text/calendar",
+        headers={
+            "Content-Disposition": f'attachment; filename="{team_id}.ics"',
+            "Cache-Control": "no-cache",
+        },
+    )
 
 
 if __name__ == "__main__":

@@ -50,8 +50,8 @@ def parse_league_index(soup: BeautifulSoup) -> dict[str, str]:
     return leagues
 
 
-def _game_id(date: str, time: str, location: str, home_id: int | None, away_id: int | None) -> str:
-    key = f"{date}|{time}|{location}|{home_id}|{away_id}"
+def _game_id(date: str, time: str, home_id: int | None, away_id: int | None) -> str:
+    key = f"{date}|{time}|{home_id}|{away_id}"
     return hashlib.sha1(key.encode()).hexdigest()[:16]
 
 
@@ -103,7 +103,6 @@ def parse_html(html: str) -> tuple[list[dict], dict[str, str]]:
                     "id": _game_id(
                         dt.strftime("%Y-%m-%d"),
                         dt.strftime("%H:%M"),
-                        current_location,
                         home_team_id,
                         away_team_id,
                     ),
