@@ -1,10 +1,9 @@
 import logging
-import os
 
 from flask import Flask, Response, abort, jsonify
 
 from .ical import build_feed
-from .models import Game, Session, Team, init_db, reset_db
+from .models import Game, Session, Team
 from .scheduler import start as start_scheduler
 
 logging.basicConfig(
@@ -12,15 +11,7 @@ logging.basicConfig(
     format="%(asctime)s %(levelname)s %(name)s %(message)s",
 )
 
-logger = logging.getLogger(__name__)
-
 app = Flask(__name__)
-
-if os.environ.get("RESET_DB_ON_START", "").lower() == "true":
-    logger.warning("RESET_DB_ON_START is set — dropping and recreating all tables")
-    reset_db()
-else:
-    init_db()
 
 start_scheduler(app)
 
