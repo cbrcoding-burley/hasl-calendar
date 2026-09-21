@@ -4,7 +4,7 @@ import os
 from datetime import date
 
 import jwt
-from flask import Flask, Response, abort, jsonify, request
+from flask import Flask, Response, abort, jsonify, render_template, request
 
 from .ical import build_feed
 from .models import Game, Session, Team
@@ -33,6 +33,11 @@ def _require_sync_auth(f):
         return f(*args, **kwargs)
 
     return decorated
+
+
+@app.get("/")
+def index():
+    return render_template("index.html")
 
 
 @app.get("/teams")
