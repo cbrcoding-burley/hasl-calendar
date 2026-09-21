@@ -1,131 +1,157 @@
-# Railway Infrastructure Setup
+# Infrastructure — Railway via Terraform
 
-This is a one-time manual bootstrap required before CI-driven deploys can work.
-Subsequent deploys happen automatically via GitHub Actions on push to `main`.
-
-> **Note:** This manual setup is a known limitation of Railway. Full Terraform
-> automation is planned — see future work below.
-
-## How Railway environments work
-
-Railway has first-class environments (e.g. `production`, `staging`) built into a project.
-The same services run in each environment with separate config, volumes, and deploy history.
-You don't create separate services per environment — you create separate Railway environments,
-each with its own scoped token.
+All Railway and GitHub Actions infrastructure is managed with Terraform. The goal
+is zero pointing-and-clicking: `terraform apply` does everything.
 
 ## Prerequisites
 
-- A Railway account at [railway.app](https://railway.app)
-- The Railway CLI installed: `npm install -g @railway/cli`
-- Keys generated in `.secrets/` (run `uv run python -c "from scripts.gen_keys import main; main()"` or see `.secrets/` — keys should already exist)
+- Terraform >= 1.6: `brew install terraform`
+- A Railway account and an account-level API token (Railway dashboard → Settings → Tokens)
+- A GitHub PAT with scopes: `repo`, `admin:repo_hook`, `secrets`
+- The sync keypair already generated in `.secrets/`
+
+## Structure
+
+```
+terraform/
+├── versions.tf              # provider pinning + state backend
+├── main.tf                  # Railway project, environment, services, volumes, variables, CI token
+├── github.tf                # GitHub Actions environment + all secrets
+├── variables.tf             # inputs
+├── outputs.tf
+├── production.tfvars.example
+└── staging.tfvars.example
+```
+
+One Terraform workspace = one Railway project + one GitHub Actions environment.
+
+## Environments
+
+| Workspace    | Railway project        | GitHub Actions env |
+|---|---|---|
+| `production` | `hasl-calendar`        | `production`       |
+| `staging`    | `hasl-calendar-staging`| `staging`          |
+
+Add more environments by creating a new workspace and running apply.
+
+---
+
+## First-time setup: production
+
+Production already exists — Terraform needs to import the live resources instead
+of trying to create them.
+
+### 1. Initialize and select workspace
+
+```bash
+cd terraform
+terraform init
+terraform workspace new production   # or: terraform workspace select production
+```
+
+### 2. Export credentials
+
+```bash
+export TF_VAR_railway_token="<account-level Railway token>"
+export TF_VAR_github_token="ghp_..."
+export TF_VAR_sync_public_key="$(cat ../.secrets/public_key.pem)"
+export TF_VAR_sync_private_key="$(cat ../.secrets/private_key.pem)"
+```
+
+### 3. Import existing Railway resources
+
+Grab the IDs from the Railway dashboard (project Settings → IDs, or via `railway status`):
+
+```bash
+# Railway project
+terraform import railway_project.this  <PROJECT_ID>
+
+# Default environment Railway created automatically
+terraform import railway_environment.this  <PROJECT_ID>:<ENVIRONMENT_ID>
+
+# Services
+terraform import railway_service.web   <PROJECT_ID>:<WEB_SERVICE_ID>
+terraform import railway_service.cron  <PROJECT_ID>:<CRON_SERVICE_ID>
+
+# Volume (if the volume was already created)
+terraform import railway_volume.data         <VOLUME_ID>
+terraform import railway_volume_instance.data  <VOLUME_ID>:<ENVIRONMENT_ID>
+
+# Existing variables (one import per variable — only needed if you want Terraform
+# to own them; a plain apply will upsert them regardless)
+```
+
+### 4. Apply
+
+```bash
+terraform plan -var-file=production.tfvars   # review — should show no destructive changes
+terraform apply -var-file=production.tfvars
+```
+
+This writes all four GitHub Actions secrets to the `production` environment automatically.
+
+---
+
+## New environment: staging (or any other)
+
+No imports needed — everything is created from scratch.
+
+```bash
+cd terraform
+terraform workspace new staging
+
+export TF_VAR_railway_token="..."
+export TF_VAR_github_token="..."
+export TF_VAR_sync_public_key="$(cat ../.secrets/public_key.pem)"   # or staging-specific keys
+export TF_VAR_sync_private_key="$(cat ../.secrets/private_key.pem)"
+
+terraform apply -var-file=staging.tfvars
+```
+
+Terraform creates:
+- A new Railway project `hasl-calendar-staging`
+- A `staging` environment inside it
+- Both services (web + cron) with all variables and the persistent volume
+- A `staging` GitHub Actions environment locked to the deploy branch
+- All four `RAILWAY_*` secrets written directly to GitHub
+
+---
 
 ## Services
 
-This project has two Railway services:
-
-| Service | Type | Purpose |
+| Service | Type | Start command |
 |---|---|---|
-| `hasl-calendar` | Web | Serves iCal feeds, exposes sync API |
-| `hasl-calendar-cron` | Cron | Scrapes HASL schedule, calls sync API |
+| `hasl-calendar` | Web | `railway.toml` → gunicorn |
+| `hasl-calendar-cron` | Cron (`0 */6 * * *`) | `python -m hasl_calendar.sync_cron` |
+
+The cron service's internal URL for the `HASL_CALENDAR_URL` variable is computed by
+Terraform: `http://hasl-calendar.railway.internal:8080`. This uses Railway's private
+network so cron → web traffic never leaves Railway's infrastructure.
 
 ---
 
-## Web service setup (`hasl-calendar`)
+## State
 
-### 1. Create the project and service
+Local backend by default — state files live in `terraform/terraform.tfstate.d/<workspace>/`.
+These contain sensitive values; keep them off shared drives and never commit them (`.gitignore` covers this).
 
-In the Railway dashboard:
-- New Project → Empty Project
-- Add Service → Empty Service, name it `hasl-calendar`
+To migrate to **HCP Terraform** (free, encrypted, no local files):
 
-Railway creates a `production` environment by default.
+```bash
+# 1. Sign up at app.terraform.io, create an org, run: terraform login
+# 2. In versions.tf replace the backend block with:
+#      backend "remote" {
+#        organization = "<your-hcp-org>"
+#        workspaces { prefix = "hasl-calendar-" }
+#      }
+# 3. terraform init -migrate-state
+```
 
-### 2. Add a persistent volume
-
-In the service → **Volumes** → **Add Volume** (do this per Railway environment):
-- Mount path: `/data`
-
-### 3. Set environment variables
-
-In the service → **Variables** (do this per Railway environment):
-
-| Variable | Value |
-|---|---|
-| `DATABASE_URL` | `sqlite:////data/hasl.db` |
-| `SYNC_PUBLIC_KEY` | Contents of `.secrets/public_key.pem` |
-
-### 4. Grab the credentials
-
-You'll need these for GitHub secrets:
-
-- **Project ID**: Railway dashboard → project → Settings → copy the project UUID
-- **Service name**: `hasl-calendar`
-- **Railway token**: Railway dashboard → project → Settings → Tokens → New Token
-  — scope it to the specific Railway environment (e.g. `production`), not the whole project
-
-### 5. Add GitHub secrets
-
-In the GitHub repo → **Settings** → **Environments** → create a `production` environment, then add:
-
-| Secret | Value |
-|---|---|
-| `RAILWAY_TOKEN` | Token scoped to the Railway `production` environment |
-| `RAILWAY_PROJECT_ID` | Project UUID (same across all GitHub environments) |
-| `RAILWAY_SERVICE_NAME` | `hasl-calendar` (same across all GitHub environments) |
-
-Also set a branch protection rule on the `production` environment: only allow deployments from `main`.
-
-### 6. Disable Railway's native GitHub auto-deploy
-
-In the service → **Settings** → **Source** → disconnect or disable auto-deploy.
-CI is the only deploy trigger; Railway's native integration bypasses the test gate.
+Other free options: Cloudflare R2 (S3-compatible backend, 10 GB free, no egress fees).
 
 ---
 
-## Cron service setup (`hasl-calendar-cron`)
+## Provider docs
 
-### 1. Create the cron service
-
-In the Railway dashboard (same project):
-- Add Service → Empty Service, name it `hasl-calendar-cron`
-- In the service → **Settings** → **Service Type** → set to **Cron**
-- Set cron schedule: `0 */6 * * *`
-- Set start command: `python -m hasl_calendar.sync_cron`
-
-### 2. Set environment variables
-
-In the cron service → **Variables**:
-
-| Variable | Value |
-|---|---|
-| `SYNC_PRIVATE_KEY` | Contents of `.secrets/private_key.pem` |
-| `HASL_CALENDAR_URL` | `http://hasl-calendar.railway.internal:8080` |
-
-> The `railway.internal` hostname is Railway's private network — the cron service
-> reaches the web service without going over the public internet.
-
-### 3. Deploy the cron service
-
-The cron service deploys from the same repo as the web service. In the cron service
-→ **Settings** → **Source** → connect to the same GitHub repo and branch (`main`).
-
----
-
-## Adding a staging environment
-
-1. In Railway dashboard → Environments → New Environment (e.g. `staging`)
-2. Repeat web service setup (volume, env vars) for the staging environment
-3. Generate a new Railway token scoped to the `staging` environment
-4. In GitHub → Settings → Environments → create a `staging` environment with:
-   - `RAILWAY_TOKEN` — the staging-scoped Railway token
-   - `RAILWAY_PROJECT_ID` — same UUID as production
-   - `RAILWAY_SERVICE_NAME` — same name as production (`hasl-calendar`)
-5. Add a deploy job to `.github/workflows/ci.yml` targeting `environment: staging`
-
----
-
-## Future work: Terraform
-
-The manual bootstrap steps above are tracked for Terraform automation using the
-[Railway Terraform provider](https://registry.terraform.io/providers/railwayapp/railway/latest)
-combined with the GitHub provider to wire up secrets automatically.
+- Railway: https://registry.terraform.io/providers/railwayapp/railway/latest/docs
+- GitHub: https://registry.terraform.io/providers/integrations/github/latest/docs

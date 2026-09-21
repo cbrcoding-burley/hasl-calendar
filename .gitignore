@@ -26,3 +26,11 @@ dist/
 
 # secrets
 .secrets/
+
+# Terraform
+terraform/.terraform/
+terraform/terraform.tfstate
+terraform/terraform.tfstate.d/
+terraform/terraform.tfstate.backup
+terraform/*.tfvars
+# .terraform.lock.hcl IS committed — it pins provider versions

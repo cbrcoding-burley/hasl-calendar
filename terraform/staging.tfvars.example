@@ -1,0 +1,14 @@
+# Copy to staging.tfvars — or export as TF_VAR_* env vars.
+# Never commit staging.tfvars (it's in .gitignore).
+
+github_owner  = "christianreynolds"
+github_repo   = "hasl-calendar"
+deploy_branch = "main"  # change to a staging branch if you want separate deploy gating
+
+# Staging can share the same keypair as production or use its own.
+# Using separate keys is safer (a staging breach can't forge production sync calls).
+#
+#   export TF_VAR_railway_token="..."   # same account token works for both envs
+#   export TF_VAR_github_token="..."
+#   export TF_VAR_sync_public_key="$(cat ../.secrets/staging_public_key.pem)"
+#   export TF_VAR_sync_private_key="$(cat ../.secrets/staging_private_key.pem)"
