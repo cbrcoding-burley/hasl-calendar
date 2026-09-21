@@ -38,6 +38,7 @@ jobs:
         if: inputs.reset_db == true
         run: railway variables set RESET_DB_ON_START=true --service ${{ secrets.RAILWAY_SERVICE_NAME }}
       - run: railway up --service ${{ secrets.RAILWAY_SERVICE_NAME }} --detach
+      - run: railway up --service ${{ secrets.RAILWAY_CRON_SERVICE_NAME }} --detach
       - name: Clear RESET_DB_ON_START
         if: inputs.reset_db == true
         run: railway variables delete RESET_DB_ON_START --service ${{ secrets.RAILWAY_SERVICE_NAME }}
