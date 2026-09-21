@@ -14,7 +14,6 @@ Scrapes the [HASL](https://www.allprosoftware.net/HASLSUMMER23/aplsmasterschedul
 - **Python 3.11+** with [uv](https://github.com/astral-sh/uv) for dependency management
 - **Flask** — HTTP server
 - **SQLAlchemy** — database ORM (SQLite)
-- **APScheduler** — background scrape job (every ~6 hours)
 - **icalendar** — iCal feed generation
 - **BeautifulSoup + lxml** — HTML scraping
 
@@ -30,6 +29,18 @@ uv run flask --app hasl_calendar.app run --debug
 # Production-like server (matches railway.toml)
 uv run gunicorn 'hasl_calendar.app:app' --bind 0.0.0.0:8000 --workers 2
 ```
+
+### Background syncing locally (not maintained)
+
+In production the scraper runs as a separate Railway cron service. If you want
+background syncing while developing locally, `dev/scheduler.py` is a
+standalone APScheduler script that approximates this:
+
+```bash
+uv run python dev/scheduler.py &
+```
+
+This is not kept in sync with production — prefer `seed.py` for a one-off seed.
 
 ## Environment variables
 
