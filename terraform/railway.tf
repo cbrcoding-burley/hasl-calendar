@@ -6,10 +6,6 @@ locals {
   project_name = local.env == "production" ? "hasl-calendar" : "hasl-calendar-${local.env}"
 }
 
-provider "railway" {
-  token = var.railway_token
-}
-
 # ── Project ───────────────────────────────────────────────────────────────────
 # One Railway project per workspace. Production should be imported (see docs/railway.md);
 # staging and any future environments are created fresh.
@@ -40,8 +36,8 @@ resource "railway_service" "cron" {
   project_id = railway_project.this.id
 
   # Makes this a Railway Cron service — runs on the schedule instead of always-on.
-  # Verify the attribute name at:
-  # registry.terraform.io/providers/railwayapp/railway/latest/docs/resources/service
+  # Verify attribute names at:
+  # registry.terraform.io/providers/terraform-community-providers/railway/latest/docs/resources/service
   cron_schedule = "0 */6 * * *"
   start_command = "python -m hasl_calendar.sync_cron"
 }

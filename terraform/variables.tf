@@ -1,15 +1,3 @@
-variable "railway_token" {
-  description = "Railway account-level API token (Settings → Tokens). Used only by Terraform; never exposed to CI."
-  type        = string
-  sensitive   = true
-}
-
-variable "github_token" {
-  description = "GitHub PAT with scopes: repo, admin:repo_hook, secrets. Used to write Actions secrets."
-  type        = string
-  sensitive   = true
-}
-
 variable "github_owner" {
   description = "GitHub username or org that owns the repo (e.g. 'christianreynolds')."
   type        = string

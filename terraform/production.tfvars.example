@@ -1,19 +1,14 @@
-# Copy to production.tfvars and fill in — or export as TF_VAR_* env vars.
+# Copy to production.tfvars and fill in non-sensitive values.
 # Never commit production.tfvars (it's in .gitignore).
 
 github_owner  = "christianreynolds"
 github_repo   = "hasl-calendar"
 deploy_branch = "main"
 
-# Sensitive values — prefer exporting rather than writing to a file:
-#
-#   export TF_VAR_railway_token="$(railway whoami --token)"  # account-level token
-#   export TF_VAR_github_token="ghp_..."
+# Provider tokens — set as native env vars (no TF_VAR_ prefix needed):
+#   export RAILWAY_TOKEN="..."   # Railway account token (Settings → Tokens)
+#   export GITHUB_TOKEN="ghp_..." # PAT with repo + secrets scopes
+
+# Keypairs — set as TF_VAR_* since they're written into Railway as env vars:
 #   export TF_VAR_sync_public_key="$(cat ../.secrets/public_key.pem)"
 #   export TF_VAR_sync_private_key="$(cat ../.secrets/private_key.pem)"
-#
-# If you prefer a file, uncomment and fill in (keep this file off git):
-# railway_token    = "..."
-# github_token     = "..."
-# sync_public_key  = "-----BEGIN PUBLIC KEY-----\n..."
-# sync_private_key = "-----BEGIN RSA PRIVATE KEY-----\n..."

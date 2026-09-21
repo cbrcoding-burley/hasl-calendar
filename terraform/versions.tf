@@ -3,7 +3,7 @@ terraform {
 
   required_providers {
     railway = {
-      source  = "railwayapp/railway"
+      source  = "terraform-community-providers/railway"
       version = "~> 0.4"
     }
     github = {
@@ -26,13 +26,8 @@ terraform {
   #          workspaces { prefix = "hasl-calendar-" }
   #        }
   #   4. terraform init -migrate-state
-  #   This gives you encrypted remote state, run history, and drift detection
-  #   with zero infra to manage. Free up to 500 resources.
   #
-  # Other free options:
-  #   • Cloudflare R2 (S3-compatible, 10 GB free):
-  #       backend "s3" { endpoint = "..." bucket = "tf-state" ... }
-  #   • GitLab-managed Terraform state (if you ever move the repo there)
+  # Other free option: Cloudflare R2 (S3-compatible, 10 GB free, no egress fees)
 
   backend "local" {}
 }

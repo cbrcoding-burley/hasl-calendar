@@ -1,5 +1,41 @@
 # Infrastructure — Railway via Terraform
 
+## Architecture
+
+```
+GitHub (main branch)
+    │
+    └─▶ GitHub Actions CI
+            │  tests pass
+            └─▶ railway up (web + cron)
+                    │
+          ┌─────────┴──────────┐
+          │                    │
+   hasl-calendar        hasl-calendar-cron
+   (Web, always-on)     (Cron, 0 */6 * * *)
+   Flask + gunicorn      python -m hasl_calendar.sync_cron
+          │                    │
+          │   /sync/* API       │ HTTP (Railway private network)
+          └────────────────────┘
+          │
+     SQLite DB
+  (volume at /data)
+```
+
+**hasl-calendar** serves iCal feeds at `/calendar/<team>.ics` and exposes an
+authenticated sync API. It owns the database.
+
+**hasl-calendar-cron** runs every 6 hours, scrapes the HASL schedule page, and
+pushes changes to the web service via the sync API. It never touches the DB
+directly. On Railway the two services communicate over the private network
+(`hasl-calendar.railway.internal:8080`) without going through the public internet.
+
+**Sync auth** — sync API calls require a short-lived RS256 JWT. The cron service
+signs tokens with a private key; the web service verifies them with the matching
+public key. See [developers.md](developers.md) for keypair setup.
+
+---
+
 All Railway and GitHub Actions infrastructure is managed with Terraform. The goal
 is zero pointing-and-clicking: `terraform apply` does everything.
 
