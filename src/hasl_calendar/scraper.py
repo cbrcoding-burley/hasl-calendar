@@ -38,12 +38,14 @@ def _parse_header(text: str) -> tuple[str, str] | None:
     return f"{month_day.rstrip(',')} {year}", location.strip()
 
 
-def _extract_team(cell) -> str:
-    """Return team name from a team cell element."""
+def _extract_team(cell) -> tuple[str, str | None]:
+    """Return (team_name, hasl_id_or_none) from a team cell element."""
     a = cell.find("a")
     if a:
-        return a.get_text(strip=True)
-    return cell.get_text(strip=True)
+        name = a.get_text(strip=True)
+        m = _TEAM_ID_REGEX.search(a.get("href", ""))
+        return name, m.group(1) if m else None
+    return cell.get_text(strip=True), None
 
 
 def parse_league_index(soup: BeautifulSoup) -> dict[str, str]:
@@ -109,8 +111,8 @@ def parse_html(html: str) -> tuple[list[dict], dict[str, str]]:
                     "Unknown league code %r — defaulting to 'HASL'", league_code
                 )
                 league = "HASL"
-            home_team_name = _extract_team(cells[3])
-            away_team_name = _extract_team(cells[4])
+            home_team_name, home_team_hasl_id = _extract_team(cells[3])
+            away_team_name, away_team_hasl_id = _extract_team(cells[4])
             home_team_slug = _slugify(home_team_name)
             away_team_slug = _slugify(away_team_name)
 
@@ -142,8 +144,10 @@ def parse_html(html: str) -> tuple[list[dict], dict[str, str]]:
                     "league": league,
                     "home_team_slug": home_team_slug,
                     "home_team_name": home_team_name,
+                    "home_team_hasl_id": home_team_hasl_id,
                     "away_team_slug": away_team_slug,
                     "away_team_name": away_team_name,
+                    "away_team_hasl_id": away_team_hasl_id,
                 }
             )
 
@@ -168,16 +172,26 @@ def sync_to_db(events: list[dict]) -> None:
 
     with Session() as session:
         for event in events:
-            for team_slug, team_name in [
-                (event["home_team_slug"], event["home_team_name"]),
-                (event["away_team_slug"], event["away_team_name"]),
+            for team_slug, team_name, hasl_id in [
+                (
+                    event["home_team_slug"],
+                    event["home_team_name"],
+                    event.get("home_team_hasl_id"),
+                ),
+                (
+                    event["away_team_slug"],
+                    event["away_team_name"],
+                    event.get("away_team_hasl_id"),
+                ),
             ]:
                 team = session.get(Team, team_slug)
                 if team is None:
-                    session.add(Team(slug=team_slug, name=team_name))
+                    session.add(Team(slug=team_slug, name=team_name, hasl_id=hasl_id))
                     teams_added += 1
-                elif team.name != team_name:
+                elif team.name != team_name or (hasl_id and team.hasl_id != hasl_id):
                     team.name = team_name
+                    if hasl_id:
+                        team.hasl_id = hasl_id
                     teams_updated += 1
 
             game = session.get(Game, event["id"])

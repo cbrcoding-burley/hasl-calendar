@@ -18,6 +18,7 @@ class Team(Base):
 
     slug = Column(String, primary_key=True)
     name = Column(String, nullable=False)
+    hasl_id = Column(String, nullable=True)
 
     home_games = relationship(
         "Game", foreign_keys="Game.home_team_slug", back_populates="home_team"

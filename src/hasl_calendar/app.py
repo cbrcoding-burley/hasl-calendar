@@ -40,11 +40,18 @@ def index():
     return render_template("index.html")
 
 
+@app.get("/healthz")
+def healthz():
+    return "", 204
+
+
 @app.get("/teams")
 def list_teams():
     with Session() as session:
         teams = session.query(Team).order_by(Team.name).all()
-        return jsonify([{"slug": t.slug, "name": t.name} for t in teams])
+        return jsonify(
+            [{"slug": t.slug, "name": t.name, "hasl_id": t.hasl_id} for t in teams]
+        )
 
 
 @app.get("/calendar/<slug>.ics")
@@ -63,6 +70,9 @@ def team_calendar(slug: str):
 
         ical_bytes = build_feed(team, games)
 
+    log.info(
+        "calendar_request slug=%s games=%d bytes=%d", slug, len(games), len(ical_bytes)
+    )
     return Response(
         ical_bytes,
         mimetype="text/calendar",

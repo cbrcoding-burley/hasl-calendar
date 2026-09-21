@@ -204,11 +204,35 @@
       line-height: 1.5;
     }
 
+    .btn-schedule {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.4rem;
+      width: 100%;
+      padding: 0.6rem;
+      margin-top: 0.5rem;
+      background: #21262d;
+      border: 1px solid #30363d;
+      border-radius: 6px;
+      color: #c9d1d9;
+      font-size: 0.85rem;
+      text-decoration: none;
+      transition: background 0.15s, border-color 0.15s;
+    }
+
+    .btn-schedule:hover { background: #2d333b; border-color: #8b949e; color: #f0f6fc; }
+
     footer {
       margin-top: 2rem;
       font-size: 0.78rem;
       color: #484f58;
+      text-align: center;
+      line-height: 1.8;
     }
+
+    footer a { color: #58a6ff; text-decoration: none; }
+    footer a:hover { text-decoration: underline; }
   </style>
 </head>
 <body>
@@ -259,10 +283,20 @@
         <strong>Apple / Outlook:</strong> click "Subscribe" above — your calendar app will prompt you.<br>
         <strong>Google Calendar:</strong> copy the HTTPS URL, then go to <em>Other calendars → From URL</em>.
       </p>
+
+      <a id="schedule-btn" class="btn-schedule" href="#" target="_blank" rel="noopener" style="display:none">
+        <svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor">
+          <path d="M7.775 3.275a.75.75 0 0 0 1.06 1.06l1.25-1.25a2 2 0 1 1 2.83 2.83l-2.5 2.5a2 2 0 0 1-2.83 0 .75.75 0 0 0-1.06 1.06 3.5 3.5 0 0 0 4.95 0l2.5-2.5a3.5 3.5 0 0 0-4.95-4.95l-1.25 1.25Zm-4.69 9.64a2 2 0 0 1 0-2.83l2.5-2.5a2 2 0 0 1 2.83 0 .75.75 0 0 0 1.06-1.06 3.5 3.5 0 0 0-4.95 0l-2.5 2.5a3.5 3.5 0 0 0 4.95 4.95l1.25-1.25a.75.75 0 0 0-1.06-1.06l-1.25 1.25a2 2 0 0 1-2.83 0Z"/>
+        </svg>
+        View Team Schedule on HASL Site
+      </a>
     </div>
   </div>
 
-  <footer>Hoboken Adult Soccer League · schedule refreshes automatically</footer>
+  <footer>
+    <a href="https://www.hobokenadultsoccer.com/" target="_blank" rel="noopener">Hoboken Adult Soccer Main Site</a><br>
+    Schedule refreshes automatically · Developed by <a href="mailto:cbrcoding@gmail.com">cbrcoding@gmail.com</a>
+  </footer>
 
   <script>
     const input = document.getElementById('team-input');
@@ -283,6 +317,8 @@
       return window.location.origin;
     }
 
+    const HASL_SCHEDULE_BASE = 'https://www.allprosoftware.net/HASLSUMMER23/aplsteam';
+
     function showResult(team) {
       const base = getBaseUrl();
       const path = `/calendar/${team.slug}.ics`;
@@ -293,6 +329,14 @@
       document.getElementById('webcal-url').textContent = webcal;
       document.getElementById('https-url').textContent = https;
       document.getElementById('subscribe-btn').href = webcal;
+
+      const schedBtn = document.getElementById('schedule-btn');
+      if (team.hasl_id) {
+        schedBtn.href = `${HASL_SCHEDULE_BASE}${team.hasl_id}.htm`;
+        schedBtn.style.display = 'flex';
+      } else {
+        schedBtn.style.display = 'none';
+      }
 
       result.classList.add('show');
     }
