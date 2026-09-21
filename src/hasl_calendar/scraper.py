@@ -239,10 +239,13 @@ def sync_via_api(base_url: str) -> None:
     }
     base_url = base_url.rstrip("/")
 
+    log.info("Fetching sync state from %s/sync/state", base_url)
     state = requests.get(f"{base_url}/sync/state", headers=headers, timeout=15)
     state.raise_for_status()
     current_ids = set(state.json()["game_ids"])
+    log.info("Server has %d existing game IDs", len(current_ids))
 
+    log.info("Scraping schedule")
     events, league_index = fetch_and_parse()
     log.info("Leagues in scraped data: %s", list(league_index.values()))
     parsed_ids = {e["id"] for e in events}
