@@ -35,6 +35,14 @@ resource "railway_service" "web" {
     mount_path = "/data"
     name       = "data"
   }
+
+  # Provider bug: after creating the volume, the provider's Read returns null for
+  # the volume attribute, causing Terraform to report an inconsistency. The volume
+  # IS created in Railway — ignore drift on it to avoid the spurious error.
+  # https://github.com/terraform-community-providers/terraform-provider-railway/issues
+  lifecycle {
+    ignore_changes = [volume]
+  }
 }
 
 resource "railway_service" "cron" {

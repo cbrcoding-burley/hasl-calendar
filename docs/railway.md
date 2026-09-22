@@ -100,22 +100,24 @@ Grab the IDs from the Railway dashboard (project Settings → IDs, or via `railw
 
 ```bash
 # Railway project
-terraform import railway_project.this  <PROJECT_ID>
+terraform import railway_project.this <PROJECT_ID>
 
-# Default environment Railway created automatically
-terraform import railway_environment.this  <PROJECT_ID>:<ENVIRONMENT_ID>
+# Railway auto-creates a "production" environment on project creation.
+# If you don't import it first, apply will fail with "environment already exists".
+terraform import railway_environment.this <PROJECT_ID>:<ENVIRONMENT_ID>
 
 # Services
-terraform import railway_service.web   <PROJECT_ID>:<WEB_SERVICE_ID>
-terraform import railway_service.cron  <PROJECT_ID>:<CRON_SERVICE_ID>
+terraform import railway_service.web  <PROJECT_ID>:<WEB_SERVICE_ID>
+terraform import railway_service.cron <PROJECT_ID>:<CRON_SERVICE_ID>
 
-# Volume (if the volume was already created)
-terraform import railway_volume.data         <VOLUME_ID>
-terraform import railway_volume_instance.data  <VOLUME_ID>:<ENVIRONMENT_ID>
-
-# Existing variables (one import per variable — only needed if you want Terraform
-# to own them; a plain apply will upsert them regardless)
+# Variables (only needed if you want Terraform to own existing values;
+# a plain apply will create/upsert them regardless)
 ```
+
+> **Note:** Volumes are managed as a nested block on `railway_service.web` rather
+> than as a separate import target. A `lifecycle { ignore_changes = [volume] }`
+> guard works around a provider bug where the volume read returns null after creation
+> — the volume is created in Railway but Terraform would otherwise error.
 
 ### 4. Apply
 
