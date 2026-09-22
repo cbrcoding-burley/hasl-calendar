@@ -83,6 +83,7 @@ resource "railway_variable" "cron_calendar_url" {
   service_id     = railway_service.cron.id
   name           = "HASL_CALENDAR_URL"
 
-  # Railway private network: cron → web without leaving Railway's internal network.
-  value = "http://${railway_service.web.name}.railway.internal:8080"
+  # Railway variable reference — resolves to the web service URL in whichever
+  # environment this runs in (production or a PR environment).
+  value = "$${{RAILWAY_SERVICE_HASL_CALENDAR_SERVER_URL}}"
 }
