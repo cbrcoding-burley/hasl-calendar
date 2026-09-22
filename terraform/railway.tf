@@ -31,7 +31,7 @@ resource "railway_service" "web" {
   project_id = railway_project.this.id
 
   # Volume is a nested block on the service — no separate railway_volume resource.
-  volume {
+  volume = {
     mount_path = "/data"
     name       = "data"
   }
