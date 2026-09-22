@@ -71,10 +71,10 @@ def parsed_schedule(schedule_html):
     return events, league_index
 
 
-def make_team(name: str, slug: str = None):
+def make_team(name: str, slug: str = None, hasl_id: str = None):
     from hasl_calendar.scraper import _slugify
 
-    return SimpleNamespace(name=name, slug=slug or _slugify(name))
+    return SimpleNamespace(name=name, slug=slug or _slugify(name), hasl_id=hasl_id)
 
 
 def make_game(

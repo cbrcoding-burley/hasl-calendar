@@ -4,6 +4,7 @@ from datetime import datetime, timedelta, timezone
 from icalendar import Calendar, Event, vText
 
 PRODID = "-//HASL Calendar//EN"
+HASL_SCHEDULE_BASE = "https://www.allprosoftware.net/HASLSUMMER23/aplsteam"
 
 # Maps the park portion of a location string to a street address.
 _PARK_ADDRESSES = {
@@ -27,6 +28,16 @@ def _resolve_location(raw: str) -> tuple[str, str]:
     return raw.title(), ""
 
 
+def _location_name(raw: str) -> str:
+    """Return the park name without direction, e.g. 'Frank Sinatra Park' from
+    'FRANK SINATRA PARK - NORTH'."""
+    raw = raw.strip().upper()
+    for park_key in _PARK_ADDRESSES:
+        if raw.startswith(park_key):
+            return park_key.title()
+    return raw.title()
+
+
 def build_feed(team, games) -> bytes:
     """Return a UTF-8 encoded .ics bytes object for the given team and their games."""
     cal = Calendar()
@@ -37,6 +48,12 @@ def build_feed(team, games) -> bytes:
     cal.add("x-published-ttl", "PT1H")
     cal.add("refresh-interval;value=duration", "PT1H")
 
+    schedule_url = (
+        f"{HASL_SCHEDULE_BASE}{team.hasl_id}.htm"
+        if getattr(team, "hasl_id", None)
+        else None
+    )
+
     for game in games:
         evt = Event()
         evt.add("uid", vText(f"{game.id}@hasl-calendar"))
@@ -45,15 +62,29 @@ def build_feed(team, games) -> bytes:
         end = start + timedelta(hours=1)
 
         address, field = _resolve_location(game.location)
-        description_parts = [game.league]
+        location_name = _location_name(game.location)
+
+        # Requested team always first in the title
+        is_home = game.home_team_slug == team.slug
+        opponent = game.away_team.name if is_home else game.home_team.name
+        summary = f"{team.name} vs {opponent}"
+
+        # Description: web-site order first, then key/value fields
+        desc_lines = [f"{game.home_team.name} vs {game.away_team.name}", ""]
+        desc_lines.append(f"Location: {location_name}")
         if field:
-            description_parts.append(f"Field: {field}")
+            desc_lines.append(f"Field: {field}")
+        desc_lines.append(f"League: {game.league}")
+        if schedule_url:
+            desc_lines.append(f"Schedule: {schedule_url}")
 
         evt.add("dtstart", start)
         evt.add("dtend", end)
-        evt.add("summary", vText(f"{game.home_team.name} vs {game.away_team.name}"))
+        evt.add("summary", vText(summary))
         evt.add("location", vText(address))
-        evt.add("description", vText("\n".join(description_parts)))
+        evt.add("description", vText("\n".join(desc_lines)))
+        if schedule_url:
+            evt.add("url", vText(schedule_url))
         evt.add("last-modified", datetime.now(tz=timezone.utc))
 
         cal.add_component(evt)

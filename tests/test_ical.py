@@ -1,7 +1,7 @@
 import pytest
 from icalendar import Calendar
 
-from tests.conftest import make_game, make_team
+from tests.conftest import make_game, make_team  # noqa: F401 (used in inline tests)
 
 
 @pytest.fixture
@@ -70,17 +70,60 @@ class TestBuildFeedEvents:
         events = [c for c in parsed_feed.walk() if c.name == "VEVENT"]
         assert str(events[0]["uid"]) == f"{single_game.id}@hasl-calendar"
 
-    def test_summary_is_home_vs_away(self, parsed_feed, home_team, away_team):
+    def test_summary_puts_requested_team_first_when_home(
+        self, parsed_feed, home_team, away_team
+    ):
         events = [c for c in parsed_feed.walk() if c.name == "VEVENT"]
         assert str(events[0]["summary"]) == f"{home_team.name} vs {away_team.name}"
+
+    def test_summary_puts_requested_team_first_when_away(self, home_team, away_team):
+        from hasl_calendar.ical import build_feed
+
+        game = make_game("g1", home_team, away_team)
+        cal = Calendar.from_ical(build_feed(away_team, [game]))
+        events = [c for c in cal.walk() if c.name == "VEVENT"]
+        assert str(events[0]["summary"]) == f"{away_team.name} vs {home_team.name}"
+
+    def test_description_first_line_is_home_vs_away(
+        self, parsed_feed, home_team, away_team
+    ):
+        events = [c for c in parsed_feed.walk() if c.name == "VEVENT"]
+        first_line = str(events[0]["description"]).splitlines()[0]
+        assert first_line == f"{home_team.name} vs {away_team.name}"
 
     def test_location_is_street_address(self, parsed_feed):
         events = [c for c in parsed_feed.walk() if c.name == "VEVENT"]
         assert str(events[0]["location"]) == "398 Sinatra Dr, Hoboken, NJ 07030"
 
-    def test_description_includes_field_direction(self, parsed_feed):
+    def test_description_includes_location_name(self, parsed_feed):
         events = [c for c in parsed_feed.walk() if c.name == "VEVENT"]
-        assert "North" in str(events[0]["description"])
+        assert "Location: Frank Sinatra Park" in str(events[0]["description"])
+
+    def test_description_includes_field(self, parsed_feed):
+        events = [c for c in parsed_feed.walk() if c.name == "VEVENT"]
+        assert "Field: North" in str(events[0]["description"])
+
+    def test_description_includes_league(self, parsed_feed):
+        events = [c for c in parsed_feed.walk() if c.name == "VEVENT"]
+        assert "League: MEN'S REC LEAGUE" in str(events[0]["description"])
+
+    def test_url_set_when_hasl_id_present(self, home_team, away_team):
+        from hasl_calendar.ical import build_feed
+
+        team_with_id = make_team("Soccer Monday's", hasl_id="654")
+        game = make_game("g1", team_with_id, away_team)
+        cal = Calendar.from_ical(build_feed(team_with_id, [game]))
+        events = [c for c in cal.walk() if c.name == "VEVENT"]
+        assert "aplsteam654.htm" in str(events[0]["url"])
+
+    def test_url_not_set_when_no_hasl_id(self, away_team):
+        from hasl_calendar.ical import build_feed
+
+        team_no_id = make_team("No ID Team")
+        game = make_game("g1", team_no_id, away_team)
+        cal = Calendar.from_ical(build_feed(team_no_id, [game]))
+        events = [c for c in cal.walk() if c.name == "VEVENT"]
+        assert events[0].get("url") is None
 
     def test_dtstart_correct_date_and_time(self, parsed_feed):
         events = [c for c in parsed_feed.walk() if c.name == "VEVENT"]
