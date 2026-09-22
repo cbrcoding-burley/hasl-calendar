@@ -27,8 +27,10 @@ resource "railway_environment" "this" {
 # ── Services ──────────────────────────────────────────────────────────────────
 
 resource "railway_service" "web" {
-  name       = "hasl-calendar-server"
-  project_id = railway_project.this.id
+  name               = "hasl-calendar-server"
+  project_id         = railway_project.this.id
+  source_repo        = "${var.github_owner}/${var.github_repo}"
+  source_repo_branch = var.deploy_branch
 
   # Volume is a nested block on the service — no separate railway_volume resource.
   volume = {
@@ -46,11 +48,11 @@ resource "railway_service" "web" {
 }
 
 resource "railway_service" "cron" {
-  name          = "hasl-calendar-cron"
-  project_id    = railway_project.this.id
-  cron_schedule = "0 */6 * * *"
-  # start_command is not a provider attribute — set it in the Railway dashboard
-  # or via railway.toml service config after first deploy.
+  name               = "hasl-calendar-cron"
+  project_id         = railway_project.this.id
+  cron_schedule      = "0 */6 * * *"
+  source_repo        = "${var.github_owner}/${var.github_repo}"
+  source_repo_branch = var.deploy_branch
 }
 
 # ── Web service variables ─────────────────────────────────────────────────────
