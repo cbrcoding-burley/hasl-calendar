@@ -9,3 +9,4 @@ deploy_branch = "main"
 # export GITHUB_TOKEN="ghp_..."
 # export TF_VAR_sync_public_key="$(cat ../.secrets/public_key.pem)"
 # export TF_VAR_sync_private_key="$(cat ../.secrets/private_key.pem)"
+# export TF_VAR_railway_ci_token="..."  # generate in Railway dashboard → project → Settings → Tokens (environment-scoped)

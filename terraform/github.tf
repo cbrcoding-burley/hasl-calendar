@@ -29,10 +29,12 @@ resource "github_repository_environment_deployment_policy" "main_branch" {
 # These replace every secret you'd otherwise set by hand in the GitHub UI.
 
 resource "github_actions_environment_secret" "railway_token" {
-  repository      = data.github_repository.this.name
-  environment     = github_repository_environment.this.environment
-  secret_name     = "RAILWAY_TOKEN"
-  plaintext_value = railway_token.ci.token
+  repository  = data.github_repository.this.name
+  environment = github_repository_environment.this.environment
+  secret_name = "RAILWAY_TOKEN"
+  # railway_token is not supported by this provider — token is generated manually
+  # in Railway dashboard → project → Settings → Tokens (environment-scoped).
+  plaintext_value = var.railway_ci_token
 }
 
 resource "github_actions_environment_secret" "railway_project_id" {

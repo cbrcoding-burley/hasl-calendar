@@ -29,37 +29,25 @@ resource "railway_environment" "this" {
 resource "railway_service" "web" {
   name       = "hasl-calendar-server"
   project_id = railway_project.this.id
+
+  # Volume is a nested block on the service — no separate railway_volume resource.
+  volume {
+    mount_path = "/data"
+    name       = "data"
+  }
 }
 
 resource "railway_service" "cron" {
-  name       = "hasl-calendar-cron"
-  project_id = railway_project.this.id
-
-  # Makes this a Railway Cron service — runs on the schedule instead of always-on.
-  # Verify attribute names at:
-  # registry.terraform.io/providers/terraform-community-providers/railway/latest/docs/resources/service
+  name          = "hasl-calendar-cron"
+  project_id    = railway_project.this.id
   cron_schedule = "0 */6 * * *"
-  start_command = "python -m hasl_calendar.sync_cron"
-}
-
-# ── Persistent volume (SQLite) ────────────────────────────────────────────────
-
-resource "railway_volume" "data" {
-  name       = "data"
-  project_id = railway_project.this.id
-}
-
-resource "railway_volume_instance" "data" {
-  volume_id      = railway_volume.data.id
-  environment_id = railway_environment.this.id
-  service_id     = railway_service.web.id
-  mount_path     = "/data"
+  # start_command is not a provider attribute — set it in the Railway dashboard
+  # or via railway.toml service config after first deploy.
 }
 
 # ── Web service variables ─────────────────────────────────────────────────────
 
 resource "railway_variable" "web_database_url" {
-  project_id     = railway_project.this.id
   environment_id = railway_environment.this.id
   service_id     = railway_service.web.id
   name           = "DATABASE_URL"
@@ -67,7 +55,6 @@ resource "railway_variable" "web_database_url" {
 }
 
 resource "railway_variable" "web_sync_public_key" {
-  project_id     = railway_project.this.id
   environment_id = railway_environment.this.id
   service_id     = railway_service.web.id
   name           = "SYNC_PUBLIC_KEY"
@@ -77,7 +64,6 @@ resource "railway_variable" "web_sync_public_key" {
 # ── Cron service variables ────────────────────────────────────────────────────
 
 resource "railway_variable" "cron_sync_private_key" {
-  project_id     = railway_project.this.id
   environment_id = railway_environment.this.id
   service_id     = railway_service.cron.id
   name           = "SYNC_PRIVATE_KEY"
@@ -85,21 +71,10 @@ resource "railway_variable" "cron_sync_private_key" {
 }
 
 resource "railway_variable" "cron_calendar_url" {
-  project_id     = railway_project.this.id
   environment_id = railway_environment.this.id
   service_id     = railway_service.cron.id
   name           = "HASL_CALENDAR_URL"
 
   # Railway private network: cron → web without leaving Railway's internal network.
-  # The service name matches the Railway service name, not the public hostname.
   value = "http://${railway_service.web.name}.railway.internal:8080"
-}
-
-# ── Per-environment CI token ──────────────────────────────────────────────────
-# Environment-scoped so a staging token can't deploy to production.
-
-resource "railway_token" "ci" {
-  name           = "github-actions-${local.env}"
-  project_id     = railway_project.this.id
-  environment_id = railway_environment.this.id
 }

@@ -38,3 +38,9 @@ variable "deploy_branch" {
   type        = string
   default     = "main"
 }
+
+variable "railway_ci_token" {
+  description = "Environment-scoped Railway token for CI deploys. Generate in Railway dashboard → project → Settings → Tokens, scoped to this environment. Set via TF_VAR_railway_ci_token."
+  type        = string
+  sensitive   = true
+}

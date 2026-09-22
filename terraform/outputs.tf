@@ -19,6 +19,6 @@ output "cron_service_id" {
 }
 
 output "ci_token_hint" {
-  description = "Reminder: the CI token is written directly to GitHub Actions secrets — you don't need to copy it."
-  value       = "Railway token for '${local.env}' is managed in GitHub → Environments → ${local.env} → RAILWAY_TOKEN"
+  description = "Reminder: generate this token in Railway dashboard → project → Settings → Tokens, scoped to the environment, then export as TF_VAR_railway_ci_token before applying."
+  value       = "Railway CI token for '${local.env}' must be generated manually — the provider does not support token creation."
 }
