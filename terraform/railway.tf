@@ -1,5 +1,5 @@
 locals {
-  env = terraform.workspace # "production" | "staging" | ...
+  env = "production" # "production" | "staging" | ...
 
   # Production keeps the canonical name; other workspaces get a suffix so they
   # live as distinct Railway projects and don't collide.
@@ -27,7 +27,7 @@ resource "railway_environment" "this" {
 # ── Services ──────────────────────────────────────────────────────────────────
 
 resource "railway_service" "web" {
-  name       = "hasl-calendar"
+  name       = "hasl-calendar-server"
   project_id = railway_project.this.id
 }
 

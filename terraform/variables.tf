@@ -1,3 +1,15 @@
+variable "railway_token" {
+  description = "Railway account-level API token. Set via RAILWAY_TOKEN env var — do not put in tfvars."
+  type        = string
+  sensitive   = true
+}
+
+variable "github_token" {
+  description = "GitHub PAT with repo + secrets scopes. Set via GITHUB_TOKEN env var — do not put in tfvars."
+  type        = string
+  sensitive   = true
+}
+
 variable "github_owner" {
   description = "GitHub username or org that owns the repo (e.g. 'christianreynolds')."
   type        = string
