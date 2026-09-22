@@ -19,12 +19,15 @@ _LOCATION_RE = re.compile(r"^(.+?)\s*[-–]\s*(\w+)$|^(.+?)\s+(\w+)$")
 
 def _resolve_location(raw: str) -> tuple[str, str]:
     """Split a raw location like 'FRANK SINATRA PARK - NORTH' into
-    (street_address, field_label). Falls back to (title-cased raw, '') if unknown."""
+    (location_string, field_label). location_string is 'Park Name, street address'.
+    Falls back to (title-cased raw, '') if unknown."""
     raw = raw.strip().upper()
     for park_key, address in _PARK_ADDRESSES.items():
         if raw.startswith(park_key):
             remainder = raw[len(park_key) :].strip(" -–").strip()
-            return address, remainder.title() if remainder else ""
+            return f"{park_key.title()}, {address}", (
+                remainder.title() if remainder else ""
+            )
     return raw.title(), ""
 
 

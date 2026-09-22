@@ -91,9 +91,11 @@ class TestBuildFeedEvents:
         first_line = str(events[0]["description"]).splitlines()[0]
         assert first_line == f"{home_team.name} vs {away_team.name}"
 
-    def test_location_is_street_address(self, parsed_feed):
+    def test_location_includes_park_name_and_address(self, parsed_feed):
         events = [c for c in parsed_feed.walk() if c.name == "VEVENT"]
-        assert str(events[0]["location"]) == "398 Sinatra Dr, Hoboken, NJ 07030"
+        loc = str(events[0]["location"])
+        assert "Frank Sinatra Park" in loc
+        assert "398 Sinatra Dr, Hoboken, NJ 07030" in loc
 
     def test_description_includes_location_name(self, parsed_feed):
         events = [c for c in parsed_feed.walk() if c.name == "VEVENT"]
