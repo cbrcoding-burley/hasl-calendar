@@ -54,6 +54,36 @@ def list_teams():
         )
 
 
+@app.get("/schedule/<slug>")
+def team_schedule(slug: str):
+    with Session() as session:
+        team = session.query(Team).filter_by(slug=slug).first()
+        if team is None:
+            abort(404)
+        games = (
+            session.query(Game)
+            .filter((Game.home_team_slug == slug) | (Game.away_team_slug == slug))
+            .order_by(Game.date, Game.time)
+            .all()
+        )
+        return jsonify(
+            [
+                {
+                    "date": g.date,
+                    "time": g.time,
+                    "location": g.location,
+                    "is_home": g.home_team_slug == slug,
+                    "opponent": (
+                        g.away_team.name
+                        if g.home_team_slug == slug
+                        else g.home_team.name
+                    ),
+                }
+                for g in games
+            ]
+        )
+
+
 @app.get("/calendar/<slug>.ics")
 def team_calendar(slug: str):
     with Session() as session:

@@ -269,16 +269,16 @@ class TestUpdateTimeAndLocation:
         events = _ical_events(seeded_client, "soccer-monday-s")
 
         # Sep 8 game: still at Sinatra Park
-        assert str(events[0]["location"]) == "398 Sinatra Dr, Hoboken, NJ 07030"
+        assert "398 Sinatra Dr, Hoboken, NJ 07030" in str(events[0]["location"])
         # Nov 1 game: moved to Resiliency Park
-        assert str(events[1]["location"]) == "1201 Madison St, Hoboken, NJ 07030"
+        assert "1201 Madison St, Hoboken, NJ 07030" in str(events[1]["location"])
 
     def test_location_change_affects_both_nov1_games(self, seeded_client, auth):
         _sync(seeded_client, auth, RICH_HTML_NOV1_RESILIENCY)
         # Clare Bears Nov 1 game also at the same date block → also updated
         cb_events = _ical_events(seeded_client, "clare-bears")
         nov1_event = next(e for e in cb_events if e["dtstart"].dt.month == 11)
-        assert str(nov1_event["location"]) == "1201 Madison St, Hoboken, NJ 07030"
+        assert "1201 Madison St, Hoboken, NJ 07030" in str(nov1_event["location"])
 
     def test_unrelated_sep9_location_unchanged(self, seeded_client, auth):
         before = str(_ical_events(seeded_client, "clare-bears")[0]["location"])

@@ -233,6 +233,60 @@
 
     footer a { color: #58a6ff; text-decoration: none; }
     footer a:hover { text-decoration: underline; }
+
+    .warning {
+      display: flex;
+      align-items: flex-start;
+      gap: 0.5rem;
+      background: #2d1f00;
+      border: 1px solid #6e4c00;
+      border-radius: 8px;
+      padding: 0.75rem 1rem;
+      font-size: 0.82rem;
+      color: #e3a000;
+      text-align: left;
+      margin-bottom: 1.5rem;
+      line-height: 1.5;
+    }
+
+    .warning-icon { flex-shrink: 0; margin-top: 1px; }
+
+    #schedule-preview { display: none; margin-top: 1.5rem; text-align: left; }
+    #schedule-preview.show { display: block; }
+
+    .schedule-title {
+      font-size: 0.8rem;
+      font-weight: 500;
+      color: #8b949e;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 0.6rem;
+    }
+
+    .schedule-list {
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+      border: 1px solid #30363d;
+      border-radius: 8px;
+      overflow: hidden;
+    }
+
+    .schedule-game {
+      padding: 0.55rem 0.8rem;
+      border-bottom: 1px solid #21262d;
+      font-size: 0.83rem;
+    }
+
+    .schedule-game:last-child { border-bottom: none; }
+
+    .game-meta {
+      color: #8b949e;
+      font-size: 0.78rem;
+      margin-bottom: 0.15rem;
+    }
+
+    .game-opponent { color: #c9d1d9; }
   </style>
 </head>
 <body>
@@ -240,6 +294,11 @@
     <div class="logo">⚽</div>
     <h1>HASL Team Calendar</h1>
     <p class="subtitle">Subscribe to your team's schedule in any calendar app</p>
+
+    <div class="warning">
+      <span class="warning-icon">⚠️</span>
+      <span>Playoff schedules are not yet supported. This calendar only includes regular season games.</span>
+    </div>
 
     <div class="ac-wrap">
       <label for="team-input">Search for your team</label>
@@ -283,6 +342,11 @@
         <strong>Apple / Outlook:</strong> click "Subscribe" above — your calendar app will prompt you.<br>
         <strong>Google Calendar:</strong> copy the HTTPS URL, then go to <em>Other calendars → From URL</em>.
       </p>
+
+      <div id="schedule-preview">
+        <div class="schedule-title">Schedule</div>
+        <div class="schedule-list" id="schedule-list"></div>
+      </div>
 
       <a id="schedule-btn" class="btn-schedule" href="#" target="_blank" rel="noopener" style="display:none">
         <svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor">
@@ -343,8 +407,56 @@
 
     function hideResult() {
       result.classList.remove('show');
+      document.getElementById('schedule-preview').classList.remove('show');
       selectedSlug = null;
       input.classList.remove('valid');
+    }
+
+    const DAY = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+    const MONTH = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+    function fmtDate(dateStr) {
+      // dateStr is "YYYY-MM-DD"; parse as local date to avoid UTC offset shifting the day
+      const [y, m, d] = dateStr.split('-').map(Number);
+      const dt = new Date(y, m - 1, d);
+      return `${DAY[dt.getDay()]} ${MONTH[dt.getMonth()]} ${d}`;
+    }
+
+    function fmtTime(timeStr) {
+      // timeStr is "HH:MM" 24h
+      const [h, m] = timeStr.split(':').map(Number);
+      const ampm = h >= 12 ? 'PM' : 'AM';
+      const h12 = h % 12 || 12;
+      return `${h12}:${m.toString().padStart(2, '0')} ${ampm}`;
+    }
+
+    function fmtLocation(raw) {
+      return raw.replace(/\s*[-–]\s*/g, ' ').replace(/\b(\w)/g, c => c.toUpperCase()).toLowerCase()
+        .replace(/\b\w/g, c => c.toUpperCase());
+    }
+
+    function loadSchedule(slug) {
+      fetch(`/schedule/${slug}`)
+        .then(r => r.json())
+        .then(games => {
+          const list = document.getElementById('schedule-list');
+          list.innerHTML = '';
+          if (games.length === 0) {
+            list.innerHTML = '<div class="schedule-game"><div class="game-meta">No games found</div></div>';
+          } else {
+            games.forEach(g => {
+              const row = document.createElement('div');
+              row.className = 'schedule-game';
+              row.innerHTML = `
+                <div class="game-meta">${fmtDate(g.date)} · ${fmtTime(g.time)} · ${fmtLocation(g.location)}</div>
+                <div class="game-opponent">vs ${g.opponent}${g.is_home ? '' : ' <span style="color:#8b949e">(Away)</span>'}</div>
+              `;
+              list.appendChild(row);
+            });
+          }
+          document.getElementById('schedule-preview').classList.add('show');
+        })
+        .catch(() => {});
     }
 
     function openDropdown(filtered) {
@@ -379,6 +491,7 @@
       selectedSlug = team.slug;
       closeDropdown();
       showResult(team);
+      loadSchedule(team.slug);
     }
 
     function highlightItem(index) {
