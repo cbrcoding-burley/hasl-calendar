@@ -24,4 +24,5 @@ existing_environment_id = ""
 #   export TF_VAR_sync_public_key="$(cat ../.secrets/public_key.pem)"
 #   export TF_VAR_sync_private_key="$(cat ../.secrets/private_key.pem)"
 #   export TF_VAR_railway_ci_token="..."  # Railway dashboard → project → Settings → Tokens (env-scoped)
-#   export TF_VAR_cloudflare_zone_id="..."  # only needed if root_domain is set
+#   export TF_VAR_cloudflare_zone_id="..."    # only needed if root_domain is set
+#   export TF_VAR_cloudflare_api_token="..."  # only needed if root_domain is set

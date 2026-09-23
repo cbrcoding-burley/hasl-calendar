@@ -8,6 +8,5 @@ provider "github" {
 }
 
 provider "cloudflare" {
-  # Reads CLOUDFLARE_API_TOKEN from environment automatically.
-  # Only active when var.cloudflare_zone_id is set.
+  api_token = var.cloudflare_api_token
 }

@@ -63,3 +63,10 @@ variable "cloudflare_zone_id" {
   default     = ""
   sensitive   = true
 }
+
+variable "cloudflare_api_token" {
+  description = "Cloudflare API token with Edit Zone DNS permissions. Set via TF_VAR_cloudflare_api_token."
+  type        = string
+  default     = ""
+  sensitive   = true
+}
