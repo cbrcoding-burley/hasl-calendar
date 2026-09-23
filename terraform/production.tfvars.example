@@ -1,28 +1,25 @@
-# Copy to production.tfvars and fill in values.
-# Never commit production.tfvars (it's in .gitignore).
+# Copy to terraform.tfvars (or pass values as env vars) and fill in.
+# Never commit a file containing real values — it's in .gitignore.
 
-github_owner  = "christianreynolds"
-github_repo   = "hasl-calendar"
-deploy_branch = "main"
+github_owner = "christianreynolds"
+github_repo  = "hasl-calendar"
 
 # Railway auto-creates a "production" environment on project creation.
-# Get this ID from the Railway dashboard (project Settings → Environments)
-# and set it here so Terraform imports rather than tries to create it.
-existing_environment_id = ""
-
-# Optional: set to enable custom domain + Cloudflare DNS management.
-# root_domain = "example.com"   # production gets apex; staging gets staging.example.com
-
-# Sensitive values — set as env vars (never in tfvars):
+# Get the ID from Railway dashboard → project Settings → Environments,
+# then set TF_VAR_existing_production_environment_id so Terraform imports
+# it instead of trying to create it. Leave empty for a brand-new project.
 #
-# Provider tokens (no TF_VAR_ prefix needed):
-#   export RAILWAY_TOKEN="..."     # Railway account token (Settings → Tokens)
-#   export GITHUB_TOKEN="ghp_..."  # PAT with repo + secrets scopes
-#   export CLOUDFLARE_API_TOKEN="..."  # only needed if root_domain is set
+# existing_production_environment_id = ""
+
+# Optional: enable custom domain + Cloudflare DNS management.
+# root_domain = "hasl.example.com"
+
+# Sensitive values — always set as env vars, never in this file:
 #
-# Keypairs and CI token:
+#   export TF_VAR_railway_token="..."          # Railway → Settings → Tokens
 #   export TF_VAR_sync_public_key="$(cat ../.secrets/public_key.pem)"
 #   export TF_VAR_sync_private_key="$(cat ../.secrets/private_key.pem)"
-#   export TF_VAR_railway_ci_token="..."  # Railway dashboard → project → Settings → Tokens (env-scoped)
-#   export TF_VAR_cloudflare_zone_id="..."    # only needed if root_domain is set
-#   export TF_VAR_cloudflare_api_token="..."  # only needed if root_domain is set
+#
+# If using Cloudflare:
+#   export TF_VAR_cloudflare_zone_id="..."
+#   export TF_VAR_cloudflare_api_token="..."   # needs Edit Zone DNS permission

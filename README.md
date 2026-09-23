@@ -29,8 +29,8 @@ running the cron service locally, and test instructions.
 
 ## Deployment
 
-Deployed to [Railway](https://railway.app) via GitHub Actions on pushes to `main`.
-The database lives on a Railway volume mounted at `/data`.
+Hosted on [Railway](https://railway.app) with Railway-native auto-deploys: pushes to `main` trigger Railway directly via its GitHub source connection. GitHub Actions runs tests only — no deploy step.
 
-See [`railway.toml`](railway.toml), [`.github/workflows/ci.yml`](.github/workflows/ci.yml),
-and [`docs/railway.md`](docs/railway.md) for setup and configuration details.
+The database lives on a Railway persistent volume mounted at `/data`.
+
+See [`railway.toml`](railway.toml) and [`docs/railway.md`](docs/railway.md) for infrastructure setup.

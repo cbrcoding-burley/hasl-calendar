@@ -5,173 +5,149 @@
 ```
 GitHub (main branch)
     │
-    └─▶ GitHub Actions CI
-            │  tests pass
-            └─▶ railway up (web + cron)
-                    │
-          ┌─────────┴──────────┐
-          │                    │
-   hasl-calendar        hasl-calendar-cron
-   (Web, always-on)     (Cron, 0 */6 * * *)
-   Flask + gunicorn      python -m hasl_calendar.sync_cron
-          │                    │
-          │   /sync/* API       │ HTTP (Railway private network)
-          └────────────────────┘
-          │
-     SQLite DB
-  (volume at /data)
+    ├─▶ GitHub Actions CI (tests only)
+    │
+    └─▶ Railway auto-deploy (source_repo connection)
+            │
+  ┌─────────┴──────────┐
+  │                    │
+hasl-calendar-server  hasl-calendar-cron
+(Web, always-on)      (Cron, 0 */6 * * *)
+Flask + gunicorn       python -m hasl_calendar.sync_cron
+        │                    │
+        │   /sync/* API       │ HTTP (Railway private network)
+        └────────────────────┘
+        │
+   SQLite DB
+(volume at /data)
 ```
 
-**hasl-calendar** serves iCal feeds at `/calendar/<team>.ics` and exposes an
-authenticated sync API. It owns the database.
+One Railway project contains both a `production` and a `staging` environment. Railway deploys each service automatically when code is pushed to `main` — no `railway up` or CI deploy step.
 
-**hasl-calendar-cron** runs every 6 hours, scrapes the HASL schedule page, and
-pushes changes to the web service via the sync API. It never touches the DB
-directly. On Railway the two services communicate over the private network
-(`hasl-calendar.railway.internal:8080`) without going through the public internet.
+The two environments share the same service definitions but have independent variables and (for `production`) a persistent volume.
 
-**Sync auth** — sync API calls require a short-lived RS256 JWT. The cron service
-signs tokens with a private key; the web service verifies them with the matching
-public key. See [developers.md](developers.md) for keypair setup.
+**Sync auth** — sync API calls require a short-lived RS256 JWT. The cron service signs tokens with a private key; the web service verifies with the matching public key. See [developers.md](developers.md) for keypair setup.
 
 ---
 
-All Railway and GitHub Actions infrastructure is managed with Terraform. The goal
-is zero pointing-and-clicking: `terraform apply` does everything.
-
-## Prerequisites
-
-- Terraform >= 1.6: `brew install terraform`
-- A Railway account and an account-level API token (Railway dashboard → Settings → Tokens)
-- A GitHub PAT with scopes: `repo`, `admin:repo_hook`, `secrets`
-- The sync keypair already generated in `.secrets/`
-
-## Structure
+## Terraform structure
 
 ```
 terraform/
-├── versions.tf              # provider pinning + state backend
-├── main.tf                  # Railway project, environment, services, volumes, variables, CI token
-├── github.tf                # GitHub Actions environment + all secrets
+├── versions.tf              # provider pinning + state backend (Railway, Cloudflare)
+├── main.tf                  # project, environments, services, variables, custom domain
 ├── variables.tf             # inputs
 ├── outputs.tf
-├── production.tfvars.example
-└── staging.tfvars.example
+└── production.tfvars.example
 ```
 
-One Terraform workspace = one Railway project + one GitHub Actions environment.
-
-## Environments
-
-| Workspace    | Railway project        | GitHub Actions env |
-|---|---|---|
-| `production` | `hasl-calendar`        | `production`       |
-| `staging`    | `hasl-calendar-staging`| `staging`          |
-
-Add more environments by creating a new workspace and running apply.
+Requires **Terraform >= 1.7** (uses `for_each` on `import` blocks for conditional import).
 
 ---
 
-## First-time setup: production
+## Prerequisites
 
-Production already exists — Terraform needs to import the live resources instead
-of trying to create them.
+- Terraform >= 1.7: `brew install terraform`
+- A Railway account and account-level API token (Railway → Settings → Tokens)
+- The sync keypair in `.secrets/` (see [developers.md](developers.md))
 
-### 1. Initialize and select workspace
+---
+
+## First-time setup
+
+### 1. Initialize
 
 ```bash
 cd terraform
 terraform init
-terraform workspace new production   # or: terraform workspace select production
 ```
 
 ### 2. Export credentials
 
 ```bash
 export TF_VAR_railway_token="<account-level Railway token>"
-export TF_VAR_github_token="ghp_..."
+export TF_VAR_github_owner="<your-github-username>"
 export TF_VAR_sync_public_key="$(cat ../.secrets/public_key.pem)"
 export TF_VAR_sync_private_key="$(cat ../.secrets/private_key.pem)"
+
+# If the Railway project already exists, grab the production environment ID from
+# Railway dashboard → project Settings → Environments, then:
+export TF_VAR_existing_production_environment_id="<env-id>"
+# Leave unset (or set to "") for a brand-new project.
 ```
 
-### 3. Import existing Railway resources
-
-Grab the IDs from the Railway dashboard (project Settings → IDs, or via `railway status`):
+Optional — if managing a custom domain via Cloudflare:
 
 ```bash
-# Railway project
-terraform import railway_project.this <PROJECT_ID>
-
-# Railway auto-creates a "production" environment on project creation.
-# If you don't import it first, apply will fail with "environment already exists".
-terraform import railway_environment.this <PROJECT_ID>:<ENVIRONMENT_ID>
-
-# Services
-terraform import railway_service.web  <PROJECT_ID>:<WEB_SERVICE_ID>
-terraform import railway_service.cron <PROJECT_ID>:<CRON_SERVICE_ID>
-
-# Variables (only needed if you want Terraform to own existing values;
-# a plain apply will create/upsert them regardless)
+export TF_VAR_root_domain="hasl.example.com"
+export TF_VAR_cloudflare_zone_id="..."
+export TF_VAR_cloudflare_api_token="..."
 ```
 
-> **Note:** Volumes are managed as a nested block on `railway_service.web` rather
-> than as a separate import target. A `lifecycle { ignore_changes = [volume] }`
-> guard works around a provider bug where the volume read returns null after creation
-> — the volume is created in Railway but Terraform would otherwise error.
-
-### 4. Apply
+### 3. Plan and apply
 
 ```bash
-terraform plan -var-file=production.tfvars   # review — should show no destructive changes
-terraform apply -var-file=production.tfvars
+terraform plan
+terraform apply
 ```
 
-This writes all four GitHub Actions secrets to the `production` environment automatically.
+For an existing project, Terraform uses `for_each` on the `import` block to conditionally
+import the Railway-created production environment rather than trying to create it (which would
+fail since it already exists). No manual `terraform import` needed.
+
+### 4. One manual step: cron start command
+
+The Railway Terraform provider doesn't support per-environment start commands, so after the
+first apply, set the cron service's start command in the Railway dashboard:
+
+```
+python -m hasl_calendar.sync_cron
+```
 
 ---
 
-## New environment: staging (or any other)
+## Ongoing deploys
 
-No imports needed — everything is created from scratch.
+Push to `main` → Railway auto-deploys both services. `railway.toml` runs `migrate.py` +
+`seed.py` before starting gunicorn on the web service.
 
-```bash
-cd terraform
-terraform workspace new staging
-
-export TF_VAR_railway_token="..."
-export TF_VAR_github_token="..."
-export TF_VAR_sync_public_key="$(cat ../.secrets/public_key.pem)"   # or staging-specific keys
-export TF_VAR_sync_private_key="$(cat ../.secrets/private_key.pem)"
-
-terraform apply -var-file=staging.tfvars
-```
-
-Terraform creates:
-- A new Railway project `hasl-calendar-staging`
-- A `staging` environment inside it
-- Both services (web + cron) with all variables and the persistent volume
-- A `staging` GitHub Actions environment locked to the deploy branch
-- All four `RAILWAY_*` secrets written directly to GitHub
+GitHub Actions CI runs tests on every push and PR — it no longer has a deploy step and
+doesn't need Railway secrets.
 
 ---
 
-## Services
+## Staging environment
 
-| Service | Type | Start command |
-|---|---|---|
-| `hasl-calendar` | Web | `railway.toml` → gunicorn |
-| `hasl-calendar-cron` | Cron (`0 */6 * * *`) | `python -m hasl_calendar.sync_cron` |
+Staging is created alongside production by the same `terraform apply`. To point staging
+at a different branch, configure the branch override in the Railway dashboard (the provider
+doesn't support per-environment branch overrides).
 
-The cron service's internal URL for the `HASL_CALENDAR_URL` variable is computed by
-Terraform: `http://hasl-calendar.railway.internal:8080`. This uses Railway's private
-network so cron → web traffic never leaves Railway's infrastructure.
+---
+
+## Resetting the database
+
+The production volume is persistent. To wipe and reseed it:
+
+```bash
+# 1. Set the reset flag on the web service
+railway variables --service hasl-calendar-server set RESET_DB_ON_START=true
+
+# 2. Trigger a redeploy
+railway redeploy --service hasl-calendar-server
+
+# 3. Clear the flag once the deploy completes
+railway variables --service hasl-calendar-server delete RESET_DB_ON_START
+```
+
+Or do the same via the Railway dashboard: Variables → add `RESET_DB_ON_START=true` →
+Deployments → Redeploy → then remove the variable.
 
 ---
 
 ## State
 
-Local backend by default — state files live in `terraform/terraform.tfstate.d/<workspace>/`.
-These contain sensitive values; keep them off shared drives and never commit them (`.gitignore` covers this).
+Local backend by default — state lives in `terraform/terraform.tfstate`. This file contains
+sensitive values; never commit it (`.gitignore` covers this).
 
 To migrate to **HCP Terraform** (free, encrypted, no local files):
 
@@ -180,16 +156,16 @@ To migrate to **HCP Terraform** (free, encrypted, no local files):
 # 2. In versions.tf replace the backend block with:
 #      backend "remote" {
 #        organization = "<your-hcp-org>"
-#        workspaces { prefix = "hasl-calendar-" }
+#        workspaces { name = "hasl-calendar" }
 #      }
 # 3. terraform init -migrate-state
 ```
 
-Other free options: Cloudflare R2 (S3-compatible backend, 10 GB free, no egress fees).
+Other free option: Cloudflare R2 (S3-compatible backend, 10 GB free, no egress fees).
 
 ---
 
 ## Provider docs
 
-- Railway: https://registry.terraform.io/providers/railwayapp/railway/latest/docs
-- GitHub: https://registry.terraform.io/providers/integrations/github/latest/docs
+- Railway: https://registry.terraform.io/providers/terraform-community-providers/railway/latest/docs
+- Cloudflare: https://registry.terraform.io/providers/cloudflare/cloudflare/latest/docs

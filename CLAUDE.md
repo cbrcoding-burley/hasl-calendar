@@ -42,7 +42,7 @@ Two services, one repo:
 
 **DB** — SQLite at `sqlite:///hasl.db` locally, `sqlite:////data/hasl.db` in production (Railway persistent volume mounted at `/data` on the web service only).
 
-**Deploy flow** — GitHub Actions runs tests, then deploys via `railway up`. `railway.toml` runs `migrate.py` + `seed.py` as a pre-deploy command before starting gunicorn.
+**Deploy flow** — Push to `main` → GitHub Actions runs tests → Railway auto-deploys both services. `railway.toml` runs `migrate.py` + `seed.py` as a pre-deploy command before starting gunicorn.
 
 ## Key source files
 
@@ -58,18 +58,22 @@ src/hasl_calendar/
 
 ## Infrastructure (Terraform)
 
-`terraform/` manages all Railway and GitHub Actions resources. One Terraform workspace = one Railway environment.
+`terraform/` manages all Railway infrastructure: one project, `production` + `staging` environments, and both services. GitHub CI only runs tests — Railway auto-deploys on push to `main` via its GitHub source connection.
 
 ```bash
 cd terraform
-terraform workspace select production   # or staging
+terraform init
 export TF_VAR_railway_token="..."
-export TF_VAR_github_token="..."
+export TF_VAR_github_owner="christianreynolds"
 export TF_VAR_sync_public_key="$(cat ../.secrets/public_key.pem)"
 export TF_VAR_sync_private_key="$(cat ../.secrets/private_key.pem)"
-terraform apply -var-file=production.tfvars
+# If the Railway project already exists, also set:
+export TF_VAR_existing_production_environment_id="<id from Railway dashboard>"
+terraform apply
 ```
+
+See `docs/railway.md` for full setup, import instructions, and DB reset procedure.
 
 **Known provider quirk** — `railway_service.web` has `lifecycle { ignore_changes = [volume] }` to work around a Railway Terraform provider bug where the volume attribute reads back as null after creation, causing a spurious drift error. The volume is created correctly in Railway.
 
-State is local by default (`terraform/terraform.tfstate.d/<workspace>/`). Never commit state files — they contain secrets.
+State is local by default (`terraform/terraform.tfstate`). Never commit state files — they contain secrets.
