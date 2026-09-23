@@ -27,41 +27,21 @@ removed {
 }
 
 removed {
-  from = railway_variable.web_database_url["production"]
+  from = railway_variable.web_database_url
   lifecycle { destroy = false }
 }
 
 removed {
-  from = railway_variable.web_database_url["staging"]
+  from = railway_variable.web_sync_public_key
   lifecycle { destroy = false }
 }
 
 removed {
-  from = railway_variable.web_sync_public_key["production"]
+  from = railway_variable.cron_sync_private_key
   lifecycle { destroy = false }
 }
 
 removed {
-  from = railway_variable.web_sync_public_key["staging"]
-  lifecycle { destroy = false }
-}
-
-removed {
-  from = railway_variable.cron_sync_private_key["production"]
-  lifecycle { destroy = false }
-}
-
-removed {
-  from = railway_variable.cron_sync_private_key["staging"]
-  lifecycle { destroy = false }
-}
-
-removed {
-  from = railway_variable.cron_calendar_url["production"]
-  lifecycle { destroy = false }
-}
-
-removed {
-  from = railway_variable.cron_calendar_url["staging"]
+  from = railway_variable.cron_calendar_url
   lifecycle { destroy = false }
 }
