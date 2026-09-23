@@ -6,10 +6,6 @@ terraform {
       source  = "terraform-community-providers/railway"
       version = "~> 0.4"
     }
-    github = {
-      source  = "integrations/github"
-      version = "~> 6.0"
-    }
     cloudflare = {
       source  = "cloudflare/cloudflare"
       version = "~> 4.0"

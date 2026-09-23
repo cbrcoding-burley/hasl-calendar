@@ -1,98 +1,117 @@
 locals {
-  env = terraform.workspace
-  domain = (
-    var.root_domain != "" && local.env == "production"
-    ? var.root_domain
-    : var.root_domain != ""
-    ? "${local.env}.${var.root_domain}"
-    : null
-  )
+  environments = {
+    production = railway_environment.production.id
+    staging    = railway_environment.staging.id
+  }
 }
 
-module "environment" {
-  source = "./modules/environment"
+# ── Project ───────────────────────────────────────────────────────────────────
 
-  env_name                = local.env
-  existing_environment_id = var.existing_environment_id
-  github_repo             = var.github_repo
-  deploy_branch           = var.deploy_branch
-  sync_public_key         = var.sync_public_key
-  sync_private_key        = var.sync_private_key
-  railway_ci_token        = var.railway_ci_token
-  custom_domain           = local.domain
-  cloudflare_zone_id      = var.cloudflare_zone_id != "" ? var.cloudflare_zone_id : null
+resource "railway_project" "this" {
+  name = "hasl-calendar"
 }
 
-# ── State migration ───────────────────────────────────────────────────────────
-# These moved blocks handle renaming existing state addresses into the module.
-# Safe to remove after the first successful terraform apply on each workspace.
+# ── Environments ──────────────────────────────────────────────────────────────
+# Railway auto-creates a "production" environment on project creation.
+# Pass existing_production_environment_id to import it instead of creating it.
 
-moved {
-  from = railway_project.this
-  to   = module.environment.railway_project.this
+import {
+  for_each = var.existing_production_environment_id != "" ? { main = var.existing_production_environment_id } : {}
+  to       = railway_environment.production
+  id       = "${railway_project.this.id}:${each.value}"
 }
 
-moved {
-  from = railway_environment.this
-  to   = module.environment.railway_environment.this
+resource "railway_environment" "production" {
+  name       = "production"
+  project_id = railway_project.this.id
 }
 
-moved {
-  from = railway_service.web
-  to   = module.environment.railway_service.web
+resource "railway_environment" "staging" {
+  name       = "staging"
+  project_id = railway_project.this.id
 }
 
-moved {
-  from = railway_service.cron
-  to   = module.environment.railway_service.cron
+# ── Services ──────────────────────────────────────────────────────────────────
+# Services belong to the project; Railway deploys them per environment.
+# source_repo_branch sets the default deploy branch (production → main).
+# Per-environment branch overrides (e.g. staging → staging branch) are
+# configured in the Railway dashboard — the provider doesn't support them.
+
+resource "railway_service" "web" {
+  name               = "hasl-calendar-server"
+  project_id         = railway_project.this.id
+  source_repo        = "${var.github_owner}/${var.github_repo}"
+  source_repo_branch = "main"
+
+  volume = {
+    mount_path = "/data"
+    name       = "data"
+  }
+
+  # Provider bug: after creating the volume, the provider's Read returns null,
+  # causing a spurious inconsistency error. Volume IS created in Railway.
+  lifecycle {
+    ignore_changes = [volume]
+  }
 }
 
-moved {
-  from = railway_variable.web_database_url
-  to   = module.environment.railway_variable.web_database_url
+resource "railway_service" "cron" {
+  name               = "hasl-calendar-cron"
+  project_id         = railway_project.this.id
+  cron_schedule      = "0 */6 * * *"
+  source_repo        = "${var.github_owner}/${var.github_repo}"
+  source_repo_branch = "main"
+  # start_command: set in Railway dashboard — python -m hasl_calendar.sync_cron
 }
 
-moved {
-  from = railway_variable.web_sync_public_key
-  to   = module.environment.railway_variable.web_sync_public_key
+# ── Variables (applied to all managed environments) ───────────────────────────
+
+resource "railway_variable" "web_database_url" {
+  for_each       = local.environments
+  environment_id = each.value
+  service_id     = railway_service.web.id
+  name           = "DATABASE_URL"
+  value          = "sqlite:////data/hasl.db"
 }
 
-moved {
-  from = railway_variable.cron_sync_private_key
-  to   = module.environment.railway_variable.cron_sync_private_key
+resource "railway_variable" "web_sync_public_key" {
+  for_each       = local.environments
+  environment_id = each.value
+  service_id     = railway_service.web.id
+  name           = "SYNC_PUBLIC_KEY"
+  value          = var.sync_public_key
 }
 
-moved {
-  from = railway_variable.cron_calendar_url
-  to   = module.environment.railway_variable.cron_calendar_url
+resource "railway_variable" "cron_sync_private_key" {
+  for_each       = local.environments
+  environment_id = each.value
+  service_id     = railway_service.cron.id
+  name           = "SYNC_PRIVATE_KEY"
+  value          = var.sync_private_key
 }
 
-moved {
-  from = github_repository_environment.this
-  to   = module.environment.github_repository_environment.this
+resource "railway_variable" "cron_calendar_url" {
+  for_each       = local.environments
+  environment_id = each.value
+  service_id     = railway_service.cron.id
+  name           = "HASL_CALENDAR_URL"
+  value          = "http://${railway_service.web.name}.railway.internal:8080"
 }
 
-moved {
-  from = github_repository_environment_deployment_policy.main_branch
-  to   = module.environment.github_repository_environment_deployment_policy.this
+# ── Custom domain (optional, production only) ─────────────────────────────────
+
+resource "railway_custom_domain" "web" {
+  count          = var.root_domain != "" ? 1 : 0
+  domain         = var.root_domain
+  service_id     = railway_service.web.id
+  environment_id = railway_environment.production.id
 }
 
-moved {
-  from = github_actions_environment_secret.railway_token
-  to   = module.environment.github_actions_environment_secret.railway_token
-}
-
-moved {
-  from = github_actions_environment_secret.railway_project_id
-  to   = module.environment.github_actions_environment_secret.railway_project_id
-}
-
-moved {
-  from = github_actions_environment_secret.railway_service_name
-  to   = module.environment.github_actions_environment_secret.railway_service_name
-}
-
-moved {
-  from = github_actions_environment_secret.railway_cron_service_name
-  to   = module.environment.github_actions_environment_secret.railway_cron_service_name
+resource "cloudflare_record" "web" {
+  count   = var.root_domain != "" && var.cloudflare_zone_id != "" ? 1 : 0
+  zone_id = var.cloudflare_zone_id
+  name    = var.root_domain
+  value   = railway_custom_domain.web[0].dns_record_value
+  type    = "CNAME"
+  proxied = true
 }

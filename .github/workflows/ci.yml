@@ -6,11 +6,6 @@ on:
   pull_request:
     branches: [main]
   workflow_dispatch:
-    inputs:
-      reset_db:
-        description: "Reset database on startup (drops all data)"
-        type: boolean
-        default: false
 
 jobs:
   test:
@@ -22,23 +17,3 @@ jobs:
           enable-cache: true
       - run: uv sync
       - run: uv run python -m pytest --tb=short -q
-
-  deploy:
-    needs: test
-    runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
-    environment: production
-    env:
-      RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
-      RAILWAY_PROJECT_ID: ${{ secrets.RAILWAY_PROJECT_ID }}
-    steps:
-      - uses: actions/checkout@v4
-      - run: npm install -g @railway/cli --silent
-      - name: Set RESET_DB_ON_START
-        if: inputs.reset_db == true
-        run: railway variables set RESET_DB_ON_START=true --service ${{ secrets.RAILWAY_SERVICE_NAME }}
-      - run: railway up --service ${{ secrets.RAILWAY_SERVICE_NAME }} --detach
-      - run: railway up --service ${{ secrets.RAILWAY_CRON_SERVICE_NAME }} --detach
-      - name: Clear RESET_DB_ON_START
-        if: inputs.reset_db == true
-        run: railway variables delete RESET_DB_ON_START --service ${{ secrets.RAILWAY_SERVICE_NAME }}
