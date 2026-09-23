@@ -4,6 +4,12 @@ variable "railway_token" {
   sensitive   = true
 }
 
+variable "github_token" {
+  description = "GitHub personal access token. Set via TF_VAR_github_token — do not put in tfvars."
+  type        = string
+  sensitive   = true
+}
+
 variable "github_owner" {
   description = "GitHub username or org that owns the repo (e.g. 'christianreynolds')."
   type        = string
