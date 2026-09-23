@@ -1,5 +1,6 @@
 locals {
-  project_name = var.env_name == "production" ? "hasl-calendar" : "hasl-calendar-${var.env_name}"
+  project_name       = var.env_name == "production" ? "hasl-calendar" : "hasl-calendar-${var.env_name}"
+  github_environment = var.github_environment != null ? var.github_environment : var.env_name
 }
 
 # ── Project ───────────────────────────────────────────────────────────────────
@@ -106,7 +107,7 @@ resource "cloudflare_record" "web" {
 
 resource "github_repository_environment" "this" {
   repository  = var.github_repo
-  environment = var.env_name
+  environment = local.github_environment
 
   deployment_branch_policy {
     protected_branches     = false

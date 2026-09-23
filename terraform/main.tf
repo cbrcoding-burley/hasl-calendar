@@ -13,6 +13,7 @@ module "environment" {
   source = "./modules/environment"
 
   env_name                = local.env
+  github_environment      = var.github_environment
   existing_environment_id = var.existing_environment_id
   github_repo             = var.github_repo
   deploy_branch           = var.deploy_branch
