@@ -7,7 +7,7 @@ import jwt
 from flask import Flask, Response, abort, jsonify, render_template, request
 
 from .ical import build_feed
-from .models import Game, Session, Team
+from .models import Game, Session, SyncMeta, Team
 from .scraper import sync_to_db
 
 logging.basicConfig(
@@ -118,7 +118,14 @@ def team_calendar(slug: str):
 def sync_state():
     with Session() as session:
         game_ids = [row[0] for row in session.query(Game.id).all()]
-        return jsonify({"game_ids": game_ids})
+        meta = session.get(SyncMeta, 1)
+        return jsonify(
+            {
+                "game_ids": game_ids,
+                "content_hash": meta.content_hash if meta else None,
+                "last_full_sync_at": meta.last_full_sync_at if meta else None,
+            }
+        )
 
 
 @app.post("/sync/upsert")
@@ -130,8 +137,24 @@ def sync_upsert():
             request.content_type,
         )
         abort(400)
-    events = request.json.get("events", [])
+    body = request.json
+    events = body.get("events", [])
     sync_to_db(events)
+    content_hash = body.get("content_hash")
+    synced_at = body.get("synced_at")
+    if content_hash and synced_at:
+        with Session() as session:
+            meta = session.get(SyncMeta, 1)
+            if meta is None:
+                session.add(
+                    SyncMeta(
+                        id=1, content_hash=content_hash, last_full_sync_at=synced_at
+                    )
+                )
+            else:
+                meta.content_hash = content_hash
+                meta.last_full_sync_at = synced_at
+            session.commit()
     return "", 204
 
 

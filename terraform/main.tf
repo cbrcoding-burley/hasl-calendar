@@ -58,7 +58,7 @@ resource "railway_service" "web" {
 resource "railway_service" "cron" {
   name               = "hasl-calendar-cron"
   project_id         = railway_project.this.id
-  cron_schedule      = "0 */6 * * *"
+  cron_schedule      = "*/15 * * * *"
   source_repo        = "${var.github_owner}/${var.github_repo}"
   source_repo_branch = "main"
   # start_command: set in Railway dashboard — python -m hasl_calendar.sync_cron

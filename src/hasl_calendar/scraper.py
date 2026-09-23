@@ -20,6 +20,7 @@ def _slugify(name: str) -> str:
 
 SCHEDULE_URL = "https://www.allprosoftware.net/HASLSUMMER23/aplsmasterschedule.htm"
 TIMEZONE = "America/New_York"
+FULL_SYNC_INTERVAL = timedelta(hours=6)
 
 TIME_AND_PLACE_REGEX = re.compile(
     r"^(?:Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday),\s+(.+?)\s+(\d{4})\s+(.+)$"
@@ -77,6 +78,23 @@ def fetch_and_parse(url: str = SCHEDULE_URL) -> tuple[list[dict], dict[str, str]
         len(league_index),
     )
     return events, league_index
+
+
+def _needs_full_sync(
+    content_hash: str,
+    stored_hash: str | None,
+    last_full_sync_at: str | None,
+) -> bool:
+    if stored_hash != content_hash:
+        log.info("Content hash changed — full sync needed")
+        return True
+    if last_full_sync_at is None:
+        return True
+    age = datetime.now(tz=timezone.utc) - datetime.fromisoformat(last_full_sync_at)
+    if age > FULL_SYNC_INTERVAL:
+        log.info("Last full sync was %s ago — forcing full sync", age)
+        return True
+    return False
 
 
 def parse_html(html: str) -> tuple[list[dict], dict[str, str]]:
@@ -253,19 +271,34 @@ def sync_via_api(base_url: str) -> None:
     }
     base_url = base_url.rstrip("/")
 
+    log.info("Fetching schedule from %s", SCHEDULE_URL)
+    page = requests.get(SCHEDULE_URL, timeout=15)
+    page.raise_for_status()
+    content_hash = hashlib.sha256(page.content).hexdigest()
+
     log.info("Fetching sync state from %s/sync/state", base_url)
-    state = requests.get(f"{base_url}/sync/state", headers=headers, timeout=15)
-    state.raise_for_status()
-    current_ids = set(state.json()["game_ids"])
+    state_resp = requests.get(f"{base_url}/sync/state", headers=headers, timeout=15)
+    state_resp.raise_for_status()
+    state = state_resp.json()
+    current_ids = set(state["game_ids"])
     log.info("Server has %d existing game IDs", len(current_ids))
 
-    log.info("Scraping schedule")
-    events, league_index = fetch_and_parse()
+    if not _needs_full_sync(
+        content_hash, state.get("content_hash"), state.get("last_full_sync_at")
+    ):
+        log.info("Schedule unchanged and last full sync was recent — skipping")
+        return
+
+    events, league_index = parse_html(page.text)
     log.info("Leagues in scraped data: %s", list(league_index.values()))
     parsed_ids = {e["id"] for e in events}
 
+    synced_at = datetime.now(tz=timezone.utc).isoformat()
     resp = requests.post(
-        f"{base_url}/sync/upsert", json={"events": events}, headers=headers, timeout=30
+        f"{base_url}/sync/upsert",
+        json={"events": events, "content_hash": content_hash, "synced_at": synced_at},
+        headers=headers,
+        timeout=30,
     )
     resp.raise_for_status()
     log.info("Upserted %d events", len(events))

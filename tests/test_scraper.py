@@ -1,5 +1,30 @@
-from hasl_calendar.scraper import _game_id, _slugify, parse_html
+from datetime import datetime, timedelta, timezone
+
+from hasl_calendar.scraper import _game_id, _needs_full_sync, _slugify, parse_html
 from tests.conftest import SCHEDULE_HTML
+
+
+class TestNeedsFullSync:
+    def _recent(self):
+        return (datetime.now(tz=timezone.utc) - timedelta(hours=1)).isoformat()
+
+    def _old(self):
+        return (datetime.now(tz=timezone.utc) - timedelta(hours=7)).isoformat()
+
+    def test_hash_changed_needs_sync(self):
+        assert _needs_full_sync("new", "old", self._recent()) is True
+
+    def test_same_hash_recent_sync_skips(self):
+        assert _needs_full_sync("abc", "abc", self._recent()) is False
+
+    def test_same_hash_old_sync_needs_sync(self):
+        assert _needs_full_sync("abc", "abc", self._old()) is True
+
+    def test_no_stored_hash_needs_sync(self):
+        assert _needs_full_sync("abc", None, self._recent()) is True
+
+    def test_no_last_sync_at_needs_sync(self):
+        assert _needs_full_sync("abc", "abc", None) is True
 
 
 class TestParseLeagueIndex:

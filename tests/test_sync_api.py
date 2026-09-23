@@ -134,6 +134,58 @@ class TestSyncUpsert:
         assert state.count(EVENTS[0]["id"]) == 1
 
 
+class TestSyncStateMeta:
+    def test_empty_db_returns_null_hash(self, client, auth):
+        resp = client.get("/sync/state", headers=auth)
+        assert resp.json["content_hash"] is None
+        assert resp.json["last_full_sync_at"] is None
+
+    def test_upsert_with_hash_persists_meta(self, client, auth):
+        body = {
+            "events": EVENTS,
+            "content_hash": "abc123",
+            "synced_at": "2026-09-22T00:00:00+00:00",
+        }
+        client.post("/sync/upsert", json=body, headers=auth)
+        resp = client.get("/sync/state", headers=auth)
+        assert resp.json["content_hash"] == "abc123"
+        assert resp.json["last_full_sync_at"] == "2026-09-22T00:00:00+00:00"
+
+    def test_upsert_without_hash_leaves_meta_unchanged(self, client, auth):
+        body = {
+            "events": EVENTS,
+            "content_hash": "abc123",
+            "synced_at": "2026-09-22T00:00:00+00:00",
+        }
+        client.post("/sync/upsert", json=body, headers=auth)
+        client.post("/sync/upsert", json={"events": EVENTS}, headers=auth)
+        resp = client.get("/sync/state", headers=auth)
+        assert resp.json["content_hash"] == "abc123"
+
+    def test_upsert_updates_existing_meta(self, client, auth):
+        client.post(
+            "/sync/upsert",
+            json={
+                "events": EVENTS,
+                "content_hash": "aaa",
+                "synced_at": "2026-09-22T00:00:00+00:00",
+            },
+            headers=auth,
+        )
+        client.post(
+            "/sync/upsert",
+            json={
+                "events": EVENTS,
+                "content_hash": "bbb",
+                "synced_at": "2026-09-22T06:00:00+00:00",
+            },
+            headers=auth,
+        )
+        resp = client.get("/sync/state", headers=auth)
+        assert resp.json["content_hash"] == "bbb"
+        assert resp.json["last_full_sync_at"] == "2026-09-22T06:00:00+00:00"
+
+
 class TestSyncDelete:
     def test_deletes_future_game(self, client, auth):
         client.post("/sync/upsert", json={"events": EVENTS}, headers=auth)

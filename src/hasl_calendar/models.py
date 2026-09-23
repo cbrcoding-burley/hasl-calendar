@@ -1,6 +1,6 @@
 import os
 
-from sqlalchemy import Column, ForeignKey, String, create_engine
+from sqlalchemy import Column, ForeignKey, Integer, String, create_engine
 from sqlalchemy.orm import DeclarativeBase, relationship, sessionmaker
 
 DATABASE_URL = os.environ.get("DATABASE_URL", "sqlite:///hasl.db")
@@ -54,6 +54,14 @@ class Game(Base):
 
     def __repr__(self):
         return f"<Game {self.date} {self.time} {self.league} home={self.home_team_slug!r} away={self.away_team_slug!r}>"
+
+
+class SyncMeta(Base):
+    __tablename__ = "sync_meta"
+
+    id = Column(Integer, primary_key=True)  # always 1
+    content_hash = Column(String, nullable=True)
+    last_full_sync_at = Column(String, nullable=True)  # ISO 8601 UTC
 
 
 def init_db():
