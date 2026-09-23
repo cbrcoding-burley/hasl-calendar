@@ -15,12 +15,6 @@ variable "github_repo" {
   default     = "hasl-calendar"
 }
 
-variable "github_environment" {
-  description = "GitHub Actions environment name. Defaults to env_name. Override when the workspace name differs from the desired GitHub environment name."
-  type        = string
-  default     = null
-}
-
 variable "deploy_branch" {
   description = "Git branch the GitHub Actions environment is locked to."
   type        = string

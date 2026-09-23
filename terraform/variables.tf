@@ -45,12 +45,6 @@ variable "railway_ci_token" {
   sensitive   = true
 }
 
-variable "github_environment" {
-  description = "GitHub Actions environment name. Defaults to the workspace name. Set explicitly when the workspace name differs (e.g. workspace 'hasl-calendar-prod' but GitHub environment should be 'production')."
-  type        = string
-  default     = null
-}
-
 variable "existing_environment_id" {
   description = "ID of an auto-created Railway environment to import (production only). Railway auto-creates 'production' on project creation; passing its ID here lets Terraform import rather than try to create it. Leave empty for new environments."
   type        = string
