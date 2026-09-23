@@ -1,15 +1,27 @@
-# Copy to production.tfvars and fill in non-sensitive values.
+# Copy to production.tfvars and fill in values.
 # Never commit production.tfvars (it's in .gitignore).
 
 github_owner  = "christianreynolds"
 github_repo   = "hasl-calendar"
 deploy_branch = "main"
 
-# Provider tokens — set as native env vars (no TF_VAR_ prefix needed):
-#   export RAILWAY_TOKEN="..."   # Railway account token (Settings → Tokens)
-#   export GITHUB_TOKEN="ghp_..." # PAT with repo + secrets scopes
+# Railway auto-creates a "production" environment on project creation.
+# Get this ID from the Railway dashboard (project Settings → Environments)
+# and set it here so Terraform imports rather than tries to create it.
+existing_environment_id = ""
 
-# Keypairs and CI token — set as TF_VAR_* since they're written into Railway/GitHub:
+# Optional: set to enable custom domain + Cloudflare DNS management.
+# root_domain = "example.com"   # production gets apex; staging gets staging.example.com
+
+# Sensitive values — set as env vars (never in tfvars):
+#
+# Provider tokens (no TF_VAR_ prefix needed):
+#   export RAILWAY_TOKEN="..."     # Railway account token (Settings → Tokens)
+#   export GITHUB_TOKEN="ghp_..."  # PAT with repo + secrets scopes
+#   export CLOUDFLARE_API_TOKEN="..."  # only needed if root_domain is set
+#
+# Keypairs and CI token:
 #   export TF_VAR_sync_public_key="$(cat ../.secrets/public_key.pem)"
 #   export TF_VAR_sync_private_key="$(cat ../.secrets/private_key.pem)"
-#   export TF_VAR_railway_ci_token="..."  # generate in Railway dashboard → project → Settings → Tokens (environment-scoped)
+#   export TF_VAR_railway_ci_token="..."  # Railway dashboard → project → Settings → Tokens (env-scoped)
+#   export TF_VAR_cloudflare_zone_id="..."  # only needed if root_domain is set

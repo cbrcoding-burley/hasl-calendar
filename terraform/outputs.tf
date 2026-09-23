@@ -1,24 +1,24 @@
 output "project_id" {
-  description = "Railway project ID — save this; it's needed if you ever import into a fresh state."
-  value       = railway_project.this.id
+  description = "Railway project ID."
+  value       = module.environment.project_id
 }
 
 output "environment_id" {
   description = "Railway environment ID."
-  value       = railway_environment.this.id
+  value       = module.environment.environment_id
 }
 
 output "web_service_id" {
   description = "Railway web service ID."
-  value       = railway_service.web.id
+  value       = module.environment.web_service_id
 }
 
 output "cron_service_id" {
   description = "Railway cron service ID."
-  value       = railway_service.cron.id
+  value       = module.environment.cron_service_id
 }
 
-output "ci_token_hint" {
-  description = "Reminder: generate this token in Railway dashboard → project → Settings → Tokens, scoped to the environment, then export as TF_VAR_railway_ci_token before applying."
-  value       = "Railway CI token for '${local.env}' must be generated manually — the provider does not support token creation."
+output "web_domain" {
+  description = "Custom domain assigned to the web service, if any."
+  value       = module.environment.web_domain
 }

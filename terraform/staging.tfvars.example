@@ -1,12 +1,19 @@
-# Copy to staging.tfvars and fill in non-sensitive values.
+# Copy to staging.tfvars and fill in values.
 # Never commit staging.tfvars (it's in .gitignore).
 
 github_owner  = "christianreynolds"
 github_repo   = "hasl-calendar"
 deploy_branch = "main"
 
-# export RAILWAY_TOKEN="..."
-# export GITHUB_TOKEN="ghp_..."
-# export TF_VAR_sync_public_key="$(cat ../.secrets/public_key.pem)"
-# export TF_VAR_sync_private_key="$(cat ../.secrets/private_key.pem)"
-# export TF_VAR_railway_ci_token="..."  # generate in Railway dashboard → project → Settings → Tokens (environment-scoped)
+# No existing_environment_id needed — Terraform creates the environment from scratch.
+
+# Optional: set to enable custom domain + Cloudflare DNS management.
+# staging gets staging.example.com automatically.
+# root_domain = "example.com"
+
+# Sensitive values — set as env vars:
+#   export RAILWAY_TOKEN="..."
+#   export GITHUB_TOKEN="ghp_..."
+#   export TF_VAR_sync_public_key="$(cat ../.secrets/public_key.pem)"
+#   export TF_VAR_sync_private_key="$(cat ../.secrets/private_key.pem)"
+#   export TF_VAR_railway_ci_token="..."
