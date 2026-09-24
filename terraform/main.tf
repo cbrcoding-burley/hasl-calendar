@@ -1,8 +1,6 @@
 locals {
-  environments = {
-    production = railway_project.this.default_environment.id
-    staging    = railway_environment.staging.id
-  }
+  production_environment_id = railway_project.this.default_environment.id
+  staging_environment_id    = railway_environment.staging.id
 }
 
 # ── Project ───────────────────────────────────────────────────────────────────
@@ -28,10 +26,13 @@ resource "railway_environment" "staging" {
 }
 
 # ── Services ──────────────────────────────────────────────────────────────────
-# Services belong to the project; Railway deploys them per environment.
-# source_repo_branch sets the default deploy branch (production → main).
-# Per-environment branch overrides (e.g. staging → staging branch) are
-# configured in the Railway dashboard — the provider doesn't support them.
+# After a fresh apply, configure these manually in the Railway dashboard
+# (provider doesn't support them):
+#   - auto-deploy on push: enable per environment under service → Settings → Deploy
+#   - wait for CI: enable under service → Settings → Deploy → "Wait for CI checks"
+#   - GitHub repo permissions: grant Railway access under GitHub → Settings → Applications
+#   - per-environment branch overrides (e.g. staging → staging branch)
+#   - start commands for services that need them (see comments below)
 
 resource "railway_service" "web" {
   name               = "hasl-calendar-server"
@@ -57,38 +58,72 @@ resource "railway_service" "cron" {
   cron_schedule      = "*/15 * * * *"
   source_repo        = "${var.github_owner}/${var.github_repo}"
   source_repo_branch = "main"
-  # start_command: set in Railway dashboard — python -m hasl_calendar.sync_cron
+  # start command (set in Railway dashboard): python -m hasl_calendar.sync_cron
 }
 
-# ── Variables (applied to all managed environments) ───────────────────────────
+# ── Variables ─────────────────────────────────────────────────────────────────
+# Staging blocks depend_on production blocks because the Railway provider
+# triggers a service redeploy after each variable write; parallel creates for
+# the same service cause a "deployment already in progress" error.
 
-resource "railway_variable" "web_database_url" {
-  for_each       = local.environments
-  environment_id = each.value
+resource "railway_variable" "web_database_url_production" {
+  environment_id = local.production_environment_id
   service_id     = railway_service.web.id
   name           = "DATABASE_URL"
   value          = "sqlite:////data/hasl.db"
 }
 
-resource "railway_variable" "web_sync_public_key" {
-  for_each       = local.environments
-  environment_id = each.value
+resource "railway_variable" "web_sync_public_key_production" {
+  depends_on     = [railway_variable.web_database_url_production]
+  environment_id = local.production_environment_id
   service_id     = railway_service.web.id
   name           = "SYNC_PUBLIC_KEY"
   value          = var.sync_public_key
 }
 
-resource "railway_variable" "cron_sync_private_key" {
-  for_each       = local.environments
-  environment_id = each.value
+resource "railway_variable" "cron_sync_private_key_production" {
+  depends_on     = [railway_variable.web_sync_public_key_production]
+  environment_id = local.production_environment_id
   service_id     = railway_service.cron.id
   name           = "SYNC_PRIVATE_KEY"
   value          = var.sync_private_key
 }
 
-resource "railway_variable" "cron_calendar_url" {
-  for_each       = local.environments
-  environment_id = each.value
+resource "railway_variable" "cron_calendar_url_production" {
+  depends_on     = [railway_variable.cron_sync_private_key_production]
+  environment_id = local.production_environment_id
+  service_id     = railway_service.cron.id
+  name           = "HASL_CALENDAR_URL"
+  value          = "http://${railway_service.web.name}.railway.internal:8080"
+}
+
+resource "railway_variable" "web_database_url_staging" {
+  depends_on     = [railway_variable.cron_calendar_url_production]
+  environment_id = local.staging_environment_id
+  service_id     = railway_service.web.id
+  name           = "DATABASE_URL"
+  value          = "sqlite:///hasl.db"
+}
+
+resource "railway_variable" "web_sync_public_key_staging" {
+  depends_on     = [railway_variable.web_database_url_staging]
+  environment_id = local.staging_environment_id
+  service_id     = railway_service.web.id
+  name           = "SYNC_PUBLIC_KEY"
+  value          = var.sync_public_key
+}
+
+resource "railway_variable" "cron_sync_private_key_staging" {
+  depends_on     = [railway_variable.web_sync_public_key_staging]
+  environment_id = local.staging_environment_id
+  service_id     = railway_service.cron.id
+  name           = "SYNC_PRIVATE_KEY"
+  value          = var.sync_private_key
+}
+
+resource "railway_variable" "cron_calendar_url_staging" {
+  depends_on     = [railway_variable.cron_sync_private_key_staging]
+  environment_id = local.staging_environment_id
   service_id     = railway_service.cron.id
   name           = "HASL_CALENDAR_URL"
   value          = "http://${railway_service.web.name}.railway.internal:8080"
@@ -105,14 +140,14 @@ resource "railway_custom_domain" "web" {
   count          = var.root_domain != "" ? 1 : 0
   domain         = var.root_domain
   service_id     = railway_service.web.id
-  environment_id = railway_project.this.default_environment.id
+  environment_id = local.production_environment_id
 }
 
 resource "railway_custom_domain" "staging" {
   count          = var.root_domain != "" ? 1 : 0
   domain         = "staging.${var.root_domain}"
   service_id     = railway_service.web.id
-  environment_id = railway_environment.staging.id
+  environment_id = local.staging_environment_id
 }
 
 resource "cloudflare_record" "web" {
