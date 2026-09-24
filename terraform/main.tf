@@ -1,6 +1,6 @@
 locals {
   production_environment_id = railway_project.this.default_environment.id
-  staging_environment_id    = railway_environment.staging.id
+  staging_environment_id    = var.enable_staging ? railway_environment.staging[0].id : ""
 }
 
 # ── Project ───────────────────────────────────────────────────────────────────
@@ -21,6 +21,7 @@ resource "railway_project" "this" {
 # ── Environments ──────────────────────────────────────────────────────────────
 
 resource "railway_environment" "staging" {
+  count      = var.enable_staging ? 1 : 0
   name       = "staging"
   project_id = railway_project.this.id
 }
@@ -102,6 +103,7 @@ resource "railway_variable" "cron_calendar_url_production" {
 }
 
 resource "railway_variable" "web_database_url_staging" {
+  count          = var.enable_staging ? 1 : 0
   depends_on     = [railway_variable.cron_calendar_url_production]
   environment_id = local.staging_environment_id
   service_id     = railway_service.web.id
@@ -110,6 +112,7 @@ resource "railway_variable" "web_database_url_staging" {
 }
 
 resource "railway_variable" "web_sync_public_key_staging" {
+  count          = var.enable_staging ? 1 : 0
   depends_on     = [railway_variable.web_database_url_staging]
   environment_id = local.staging_environment_id
   service_id     = railway_service.web.id
@@ -118,6 +121,7 @@ resource "railway_variable" "web_sync_public_key_staging" {
 }
 
 resource "railway_variable" "cron_sync_private_key_staging" {
+  count          = var.enable_staging ? 1 : 0
   depends_on     = [railway_variable.web_sync_public_key_staging]
   environment_id = local.staging_environment_id
   service_id     = railway_service.cron.id
@@ -126,6 +130,7 @@ resource "railway_variable" "cron_sync_private_key_staging" {
 }
 
 resource "railway_variable" "cron_calendar_url_staging" {
+  count          = var.enable_staging ? 1 : 0
   depends_on     = [railway_variable.cron_sync_private_key_staging]
   environment_id = local.staging_environment_id
   service_id     = railway_service.cron.id
@@ -148,7 +153,7 @@ resource "railway_custom_domain" "web" {
 }
 
 resource "railway_custom_domain" "staging" {
-  count          = var.root_domain != "" ? 1 : 0
+  count          = var.enable_staging && var.root_domain != "" ? 1 : 0
   domain         = "staging.${var.root_domain}"
   service_id     = railway_service.web.id
   environment_id = local.staging_environment_id
@@ -173,7 +178,7 @@ resource "cloudflare_record" "web_verification" {
 }
 
 resource "cloudflare_record" "staging" {
-  count   = var.root_domain != "" ? 1 : 0
+  count   = var.enable_staging && var.root_domain != "" ? 1 : 0
   zone_id = data.cloudflare_zone.this[0].id
   name    = "staging.${var.root_domain}"
   value   = railway_custom_domain.staging[0].dns_record_value
@@ -182,7 +187,7 @@ resource "cloudflare_record" "staging" {
 }
 
 resource "cloudflare_record" "staging_verification" {
-  count   = var.root_domain != "" ? 1 : 0
+  count   = var.enable_staging && var.root_domain != "" ? 1 : 0
   zone_id = data.cloudflare_zone.this[0].id
   name    = railway_custom_domain.staging[0].verification_host_label
   value   = railway_custom_domain.staging[0].verification_record_value

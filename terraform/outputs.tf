@@ -10,7 +10,7 @@ output "production_environment_id" {
 
 output "staging_environment_id" {
   description = "Railway staging environment ID."
-  value       = railway_environment.staging.id
+  value       = var.enable_staging ? railway_environment.staging[0].id : null
 }
 
 output "web_service_id" {
@@ -30,5 +30,5 @@ output "web_domain" {
 
 output "staging_domain" {
   description = "Custom domain assigned to the staging web service, if any."
-  value       = var.root_domain != "" ? railway_custom_domain.staging[0].domain : null
+  value       = var.enable_staging && var.root_domain != "" ? railway_custom_domain.staging[0].domain : null
 }

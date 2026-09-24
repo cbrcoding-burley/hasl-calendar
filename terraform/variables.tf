@@ -33,6 +33,12 @@ variable "sync_private_key" {
   sensitive   = true
 }
 
+variable "enable_staging" {
+  description = "Whether to create the staging environment and its resources."
+  type        = bool
+  default     = false
+}
+
 variable "root_domain" {
   description = "Apex domain to assign to the production web service (e.g. 'example.com'). Empty string disables domain management."
   type        = string
