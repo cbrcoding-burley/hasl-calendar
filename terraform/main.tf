@@ -8,7 +8,8 @@ locals {
 # ── Project ───────────────────────────────────────────────────────────────────
 
 resource "railway_project" "this" {
-  name = "hasl-calendar"
+  name           = "hasl-calendar"
+  has_pr_deploys = true
 }
 
 # ── Environments ──────────────────────────────────────────────────────────────
