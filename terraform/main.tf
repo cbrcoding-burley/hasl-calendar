@@ -1,38 +1,26 @@
 locals {
   environments = {
-    production = railway_environment.production.id
+    production = railway_project.this.default_environment.id
     staging    = railway_environment.staging.id
   }
 }
 
 # ── Project ───────────────────────────────────────────────────────────────────
-# Railway auto-creates a "production" environment on project creation and
-# exposes its ID as default_environment. We import it below so Terraform
-# manages it explicitly rather than scattering default_environment references
-# across the config.
+# Railway auto-creates a "production" environment on project creation.
+# Its ID is exposed as default_environment.id — we reference that in locals
+# rather than managing it as a separate resource, because Terraform can't
+# import a resource whose ID depends on a computed value at plan time.
 
 resource "railway_project" "this" {
   name           = "hasl-calendar"
   has_pr_deploys = true
-  # Railway auto-creates an environment named "production" (default_environment).
-  # The provider exposes its ID as a computed attribute but doesn't allow
-  # configuring the name here — "production" is Railway's hardcoded default.
+
   default_environment = {
-    name = "production" # hate this but whatever
+    name = "production"
   }
 }
 
 # ── Environments ──────────────────────────────────────────────────────────────
-
-import {
-  to = railway_environment.production
-  id = "${railway_project.this.id}:${railway_project.this.default_environment.id}"
-}
-
-resource "railway_environment" "production" {
-  name       = "production"
-  project_id = railway_project.this.id
-}
 
 resource "railway_environment" "staging" {
   name       = "staging"
@@ -108,18 +96,39 @@ resource "railway_variable" "cron_calendar_url" {
 
 # ── Custom domain (optional, production only) ─────────────────────────────────
 
+data "cloudflare_zone" "this" {
+  count = var.root_domain != "" ? 1 : 0
+  name  = var.root_domain
+}
+
 resource "railway_custom_domain" "web" {
   count          = var.root_domain != "" ? 1 : 0
   domain         = var.root_domain
   service_id     = railway_service.web.id
-  environment_id = railway_environment.production.id
+  environment_id = railway_project.this.default_environment.id
+}
+
+resource "railway_custom_domain" "staging" {
+  count          = var.root_domain != "" ? 1 : 0
+  domain         = "staging.${var.root_domain}"
+  service_id     = railway_service.web.id
+  environment_id = railway_environment.staging.id
 }
 
 resource "cloudflare_record" "web" {
-  count   = var.root_domain != "" && var.cloudflare_zone_id != "" ? 1 : 0
-  zone_id = var.cloudflare_zone_id
+  count   = var.root_domain != "" ? 1 : 0
+  zone_id = data.cloudflare_zone.this[0].id
   name    = var.root_domain
   value   = railway_custom_domain.web[0].dns_record_value
+  type    = "CNAME"
+  proxied = true
+}
+
+resource "cloudflare_record" "staging" {
+  count   = var.root_domain != "" ? 1 : 0
+  zone_id = data.cloudflare_zone.this[0].id
+  name    = "staging.${var.root_domain}"
+  value   = railway_custom_domain.staging[0].dns_record_value
   type    = "CNAME"
   proxied = true
 }

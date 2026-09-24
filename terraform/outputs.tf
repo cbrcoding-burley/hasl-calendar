@@ -5,7 +5,7 @@ output "project_id" {
 
 output "production_environment_id" {
   description = "Railway production environment ID."
-  value       = railway_environment.production.id
+  value       = railway_project.this.default_environment.id
 }
 
 output "staging_environment_id" {
@@ -26,4 +26,9 @@ output "cron_service_id" {
 output "web_domain" {
   description = "Custom domain assigned to the production web service, if any."
   value       = var.root_domain != "" ? railway_custom_domain.web[0].domain : null
+}
+
+output "staging_domain" {
+  description = "Custom domain assigned to the staging web service, if any."
+  value       = var.root_domain != "" ? railway_custom_domain.staging[0].domain : null
 }

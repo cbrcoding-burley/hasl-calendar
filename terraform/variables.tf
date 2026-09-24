@@ -39,13 +39,6 @@ variable "root_domain" {
   default     = ""
 }
 
-variable "cloudflare_zone_id" {
-  description = "Cloudflare zone ID for DNS record creation. Empty string disables DNS management."
-  type        = string
-  default     = ""
-  sensitive   = true
-}
-
 variable "cloudflare_api_token" {
   description = "Cloudflare API token with Edit Zone DNS permissions. Set via TF_VAR_cloudflare_api_token."
   type        = string
