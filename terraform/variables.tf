@@ -33,12 +33,6 @@ variable "sync_private_key" {
   sensitive   = true
 }
 
-variable "existing_production_environment_id" {
-  description = "ID of Railway's auto-created 'production' environment. Get from Railway dashboard → project Settings → Environments. Leave empty for a brand-new project."
-  type        = string
-  default     = ""
-}
-
 variable "root_domain" {
   description = "Apex domain to assign to the production web service (e.g. 'example.com'). Empty string disables domain management."
   type        = string

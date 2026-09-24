@@ -1,6 +1,6 @@
 locals {
   environments = {
-    production = railway_environment.production.id
+    production = railway_project.this.default_environment
     staging    = railway_environment.staging.id
   }
 }
@@ -12,19 +12,8 @@ resource "railway_project" "this" {
 }
 
 # ── Environments ──────────────────────────────────────────────────────────────
-# Railway auto-creates a "production" environment on project creation.
-# Pass existing_production_environment_id to import it instead of creating it.
-
-import {
-  for_each = var.existing_production_environment_id != "" ? { main = var.existing_production_environment_id } : {}
-  to       = railway_environment.production
-  id       = "${railway_project.this.id}:${each.value}"
-}
-
-resource "railway_environment" "production" {
-  name       = "production"
-  project_id = railway_project.this.id
-}
+# Railway auto-creates a "production" environment; its ID is available as
+# railway_project.this.default_environment — no need to manage it here.
 
 resource "railway_environment" "staging" {
   name       = "staging"
@@ -104,7 +93,7 @@ resource "railway_custom_domain" "web" {
   count          = var.root_domain != "" ? 1 : 0
   domain         = var.root_domain
   service_id     = railway_service.web.id
-  environment_id = railway_environment.production.id
+  environment_id = railway_project.this.default_environment
 }
 
 resource "cloudflare_record" "web" {
