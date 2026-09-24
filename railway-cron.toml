@@ -1,0 +1,7 @@
+[build]
+builder = "railpack"
+
+[deploy]
+startCommand = "python -m hasl_calendar.sync_cron"
+restartPolicyType = "on_failure"
+restartPolicyMaxRetries = 3

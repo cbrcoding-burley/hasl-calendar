@@ -33,5 +33,10 @@ terraform {
   #
   # Other free option: Cloudflare R2 (S3-compatible, 10 GB free, no egress fees)
 
-  backend "local" {}
+  cloud {
+    organization = "cbrcoding-personal"
+    workspaces {
+      name = "hasl-calendar-prod"
+    }
+  }
 }

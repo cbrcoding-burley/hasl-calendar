@@ -62,8 +62,7 @@ resource "railway_service" "cron" {
   source_repo        = "${var.github_owner}/${var.github_repo}"
   source_repo_branch = "main"
   root_directory     = "/"
-  config_path        = "railway.toml"
-  # start command (set in Railway dashboard): python -m hasl_calendar.sync_cron
+  config_path        = "railway-cron.toml"
 }
 
 # ── Variables ─────────────────────────────────────────────────────────────────
