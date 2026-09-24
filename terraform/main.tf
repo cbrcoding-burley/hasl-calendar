@@ -72,6 +72,7 @@ resource "railway_service" "cron" {
 # the same service cause a "deployment already in progress" error.
 
 resource "railway_variable" "web_database_url_production" {
+  depends_on     = [railway_service.web, railway_service.cron]
   environment_id = local.production_environment_id
   service_id     = railway_service.web.id
   name           = "DATABASE_URL"
