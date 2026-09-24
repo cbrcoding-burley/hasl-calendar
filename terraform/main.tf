@@ -39,6 +39,8 @@ resource "railway_service" "web" {
   project_id         = railway_project.this.id
   source_repo        = "${var.github_owner}/${var.github_repo}"
   source_repo_branch = "main"
+  root_directory     = "/"
+  config_path        = "railway.toml"
 
   volume = {
     mount_path = "/data"
@@ -58,6 +60,8 @@ resource "railway_service" "cron" {
   cron_schedule      = "*/15 * * * *"
   source_repo        = "${var.github_owner}/${var.github_repo}"
   source_repo_branch = "main"
+  root_directory     = "/"
+  config_path        = "railway.toml"
   # start command (set in Railway dashboard): python -m hasl_calendar.sync_cron
 }
 
