@@ -4,8 +4,8 @@ output "project_id" {
 }
 
 output "production_environment_id" {
-  description = "Railway production environment ID (auto-created by Railway)."
-  value       = railway_project.this.default_environment
+  description = "Railway production environment ID."
+  value       = railway_environment.production.id
 }
 
 output "staging_environment_id" {

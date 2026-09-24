@@ -1,20 +1,38 @@
 locals {
   environments = {
-    production = railway_project.this.default_environment
+    production = railway_environment.production.id
     staging    = railway_environment.staging.id
   }
 }
 
 # ── Project ───────────────────────────────────────────────────────────────────
+# Railway auto-creates a "production" environment on project creation and
+# exposes its ID as default_environment. We import it below so Terraform
+# manages it explicitly rather than scattering default_environment references
+# across the config.
 
 resource "railway_project" "this" {
   name           = "hasl-calendar"
   has_pr_deploys = true
+  # Railway auto-creates an environment named "production" (default_environment).
+  # The provider exposes its ID as a computed attribute but doesn't allow
+  # configuring the name here — "production" is Railway's hardcoded default.
+  default_environment = {
+    name = "production" # hate this but whatever
+  }
 }
 
 # ── Environments ──────────────────────────────────────────────────────────────
-# Railway auto-creates a "production" environment; its ID is available as
-# railway_project.this.default_environment — no need to manage it here.
+
+import {
+  to = railway_environment.production
+  id = "${railway_project.this.id}:${railway_project.this.default_environment.id}"
+}
+
+resource "railway_environment" "production" {
+  name       = "production"
+  project_id = railway_project.this.id
+}
 
 resource "railway_environment" "staging" {
   name       = "staging"
@@ -94,7 +112,7 @@ resource "railway_custom_domain" "web" {
   count          = var.root_domain != "" ? 1 : 0
   domain         = var.root_domain
   service_id     = railway_service.web.id
-  environment_id = railway_project.this.default_environment
+  environment_id = railway_environment.production.id
 }
 
 resource "cloudflare_record" "web" {
