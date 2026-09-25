@@ -142,7 +142,9 @@ resource "railway_variable" "cron_calendar_url_staging" {
 
 data "cloudflare_zone" "this" {
   count = var.root_domain != "" ? 1 : 0
-  name  = var.root_domain
+  filter = {
+    name = var.root_domain
+  }
 }
 
 resource "railway_custom_domain" "web" {
