@@ -12,7 +12,7 @@ def main(ctx=None):
             "sizeMB": 5000,
         },
     )
-
+    # Adding a comment so we can see the thing work as god intended
     hasl_calendar_server = service(
         "hasl-calendar-server",
         source=github(
