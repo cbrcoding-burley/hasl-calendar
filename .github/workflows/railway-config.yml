@@ -33,6 +33,7 @@ jobs:
           railway-token: ${{ secrets.RAILWAY_TOKEN }}
 
   apply:
+    needs: plan
     if: >
       github.event_name == 'push' ||
       github.event_name == 'workflow_dispatch' ||
