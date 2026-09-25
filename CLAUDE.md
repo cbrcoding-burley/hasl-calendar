@@ -27,6 +27,22 @@ uv run python -m hasl_calendar.sync_cron
 uv run python seed.py
 ```
 
+## Infrastructure (Railway IaC)
+
+`.railway/railway.py` defines all Railway infrastructure (services, volume, domain, variables). Changes are applied via the Railway CLI:
+
+```bash
+# Preview changes against the linked Railway environment
+railway config plan
+
+# Apply changes after review
+railway config apply
+```
+
+Link the project first if needed: `railway link --project hasl-calendar --environment production`
+
+Secrets (`SYNC_PRIVATE_KEY`, `SYNC_PUBLIC_KEY`) are set directly in the Railway dashboard and sealed — they appear as `preserve()` in the IaC file and are never stored in source.
+
 ## Architecture
 
 Two services, one repo:
@@ -34,7 +50,7 @@ Two services, one repo:
 | Service | Role |
 |---|---|
 | `hasl-calendar` (web) | Flask app — serves iCal feeds, owns the SQLite DB, exposes authenticated sync API |
-| `hasl-calendar-cron` | Runs every 6h — scrapes HASL schedule, pushes changes to web service via HTTP |
+| `hasl-calendar-cron` | Runs every 15 min — scrapes HASL schedule, pushes changes to web service via HTTP |
 
 **The cron service never touches the database directly.** It calls the web service's sync API (`/sync/state`, `/sync/upsert`, `/sync/delete`). On Railway, cron reaches web over the private network (`hasl-calendar.railway.internal:8080`).
 
@@ -42,7 +58,7 @@ Two services, one repo:
 
 **DB** — SQLite at `sqlite:///hasl.db` locally, `sqlite:////data/hasl.db` in production (Railway persistent volume mounted at `/data` on the web service only).
 
-**Deploy flow** — Push to `main` → GitHub Actions runs tests → Railway auto-deploys both services. `railway.toml` runs `migrate.py` + `seed.py` as a pre-deploy command before starting gunicorn.
+**Deploy flow** — Push to `main` → GitHub Actions runs tests → Railway auto-deploys both services. Build/deploy config (builder, start command, pre-deploy migration) lives in `.railway/railway.py`.
 
 ## Key source files
 
@@ -55,25 +71,3 @@ src/hasl_calendar/
 ├── ical.py        Builds iCal feed bytes from Team + Game records
 └── migrate.py     DB schema migration, run on every web service startup
 ```
-
-## Infrastructure (Terraform)
-
-`terraform/` manages all Railway infrastructure: one project, `production` + `staging` environments, and both services. GitHub CI only runs tests — Railway auto-deploys on push to `main` via its GitHub source connection.
-
-```bash
-cd terraform
-terraform init
-export TF_VAR_railway_token="..."
-export TF_VAR_github_owner="christianreynolds"
-export TF_VAR_sync_public_key="$(cat ../.secrets/public_key.pem)"
-export TF_VAR_sync_private_key="$(cat ../.secrets/private_key.pem)"
-# If the Railway project already exists, also set:
-export TF_VAR_existing_production_environment_id="<id from Railway dashboard>"
-terraform apply
-```
-
-See `docs/railway.md` for full setup, import instructions, and DB reset procedure.
-
-**Known provider quirk** — `railway_service.web` has `lifecycle { ignore_changes = [volume] }` to work around a Railway Terraform provider bug where the volume attribute reads back as null after creation, causing a spurious drift error. The volume is created correctly in Railway.
-
-State is local by default (`terraform/terraform.tfstate`). Never commit state files — they contain secrets.
