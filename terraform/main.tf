@@ -142,7 +142,9 @@ resource "railway_variable" "cron_calendar_url_staging" {
 
 data "cloudflare_zone" "this" {
   count = var.root_domain != "" ? 1 : 0
-  name  = var.root_domain
+  filter {
+    name = var.root_domain
+  }
 }
 
 resource "railway_custom_domain" "web" {
@@ -159,38 +161,38 @@ resource "railway_custom_domain" "staging" {
   environment_id = local.staging_environment_id
 }
 
-resource "cloudflare_record" "web" {
+resource "cloudflare_dns_record" "web" {
   count   = var.root_domain != "" ? 1 : 0
   zone_id = data.cloudflare_zone.this[0].id
   name    = var.root_domain
-  value   = railway_custom_domain.web[0].dns_record_value
+  content = railway_custom_domain.web[0].dns_record_value
   type    = "CNAME"
   proxied = true
 }
 
-resource "cloudflare_record" "web_verification" {
+resource "cloudflare_dns_record" "web_verification" {
   count   = var.root_domain != "" ? 1 : 0
   zone_id = data.cloudflare_zone.this[0].id
   name    = railway_custom_domain.web[0].verification_host_label
-  value   = railway_custom_domain.web[0].verification_record_value
+  content = railway_custom_domain.web[0].verification_record_value
   type    = "TXT"
   proxied = false
 }
 
-resource "cloudflare_record" "staging" {
+resource "cloudflare_dns_record" "staging" {
   count   = var.enable_staging && var.root_domain != "" ? 1 : 0
   zone_id = data.cloudflare_zone.this[0].id
   name    = "staging.${var.root_domain}"
-  value   = railway_custom_domain.staging[0].dns_record_value
+  content = railway_custom_domain.staging[0].dns_record_value
   type    = "CNAME"
   proxied = true
 }
 
-resource "cloudflare_record" "staging_verification" {
+resource "cloudflare_dns_record" "staging_verification" {
   count   = var.enable_staging && var.root_domain != "" ? 1 : 0
   zone_id = data.cloudflare_zone.this[0].id
   name    = railway_custom_domain.staging[0].verification_host_label
-  value   = railway_custom_domain.staging[0].verification_record_value
+  content = railway_custom_domain.staging[0].verification_record_value
   type    = "TXT"
   proxied = false
 }
