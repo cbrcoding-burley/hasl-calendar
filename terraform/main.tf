@@ -168,6 +168,7 @@ resource "cloudflare_dns_record" "web" {
   content = railway_custom_domain.web[0].dns_record_value
   type    = "CNAME"
   proxied = true
+  ttl     = 1
 }
 
 resource "cloudflare_dns_record" "web_verification" {
@@ -177,6 +178,7 @@ resource "cloudflare_dns_record" "web_verification" {
   content = railway_custom_domain.web[0].verification_record_value
   type    = "TXT"
   proxied = false
+  ttl     = 1
 }
 
 resource "cloudflare_dns_record" "staging" {
@@ -186,6 +188,7 @@ resource "cloudflare_dns_record" "staging" {
   content = railway_custom_domain.staging[0].dns_record_value
   type    = "CNAME"
   proxied = true
+  ttl     = 1
 }
 
 resource "cloudflare_dns_record" "staging_verification" {
@@ -195,4 +198,5 @@ resource "cloudflare_dns_record" "staging_verification" {
   content = railway_custom_domain.staging[0].verification_record_value
   type    = "TXT"
   proxied = false
+  ttl     = 1
 }
