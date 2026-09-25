@@ -1,8 +1,0 @@
-[build]
-builder = "railpack"
-
-[deploy]
-preDeployCommand = "python -m hasl_calendar.migrate && python seed.py"
-startCommand = "gunicorn 'hasl_calendar.app:app' --bind 0.0.0.0:$PORT --workers 2"
-restartPolicyType = "on_failure"
-restartPolicyMaxRetries = 3
