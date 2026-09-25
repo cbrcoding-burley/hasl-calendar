@@ -43,6 +43,8 @@ Link the project first if needed: `railway link --project hasl-calendar --enviro
 
 Secrets (`SYNC_PRIVATE_KEY`, `SYNC_PUBLIC_KEY`) are set directly in the Railway dashboard and sealed — they appear as `preserve()` in the IaC file and are never stored in source.
 
+`.github/workflows/railway-config.yml` automates this in CI: PRs that touch `.railway/**` get a plan comment; merging applies the change. Requires `RAILWAY_TOKEN` (a Railway project token scoped to production) stored as a GitHub Actions secret.
+
 ## Architecture
 
 Two services, one repo:
