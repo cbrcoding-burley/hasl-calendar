@@ -20,7 +20,7 @@ def main(ctx=None):
         ),
         replicas={"us-east4-eqdc4a": 1},
         deploy={"drainingSeconds": 0, "overlapSeconds": 0},
-        domains=[{"domain": "hasl-calendar.com", "port": 0}],
+        domains=["hasl-calendar.com"],
         volumeMounts={"/data": data},
         env={"DATABASE_URL": preserve(), "SYNC_PUBLIC_KEY": preserve()},
     )
