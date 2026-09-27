@@ -20,8 +20,7 @@ def main(ctx=None):
         ),
         replicas={"us-east4-eqdc4a": 1},
         deploy={"drainingSeconds": 0, "overlapSeconds": 0},
-        preDeploy="python -m hasl_calendar.migrate && python seed.py",
-        start="gunicorn 'hasl_calendar.app:app' --bind 0.0.0.0:$PORT --workers 2",
+        start="python -m hasl_calendar.migrate && python seed.py && gunicorn 'hasl_calendar.app:app' --bind 0.0.0.0:$PORT --workers 2",
         volumeMounts={"/data": data},
         env={"DATABASE_URL": "sqlite:////data/hasl.db", "SYNC_PUBLIC_KEY": preserve()},
     )
