@@ -234,22 +234,22 @@
     footer a { color: #58a6ff; text-decoration: none; }
     footer a:hover { text-decoration: underline; }
 
-    .warning {
+    .info {
       display: flex;
       align-items: flex-start;
       gap: 0.5rem;
-      background: #2d1f00;
-      border: 1px solid #6e4c00;
+      background: #0d1f38;
+      border: 1px solid #1f4272;
       border-radius: 8px;
       padding: 0.75rem 1rem;
       font-size: 0.82rem;
-      color: #e3a000;
+      color: #79b8ff;
       text-align: left;
-      margin-bottom: 1.5rem;
+      margin-top: 1rem;
       line-height: 1.5;
     }
 
-    .warning-icon { flex-shrink: 0; margin-top: 1px; }
+    .info-icon { flex-shrink: 0; margin-top: 1px; }
 
     #schedule-preview { display: none; margin-top: 1.5rem; text-align: left; }
     #schedule-preview.show { display: block; }
@@ -295,11 +295,6 @@
     <h1>HASL Team Calendar</h1>
     <p class="subtitle">Subscribe to your team's schedule in any calendar app</p>
 
-    <div class="warning">
-      <span class="warning-icon">⚠️</span>
-      <span>Playoff schedules are not yet supported. This calendar only includes regular season games.</span>
-    </div>
-
     <div class="ac-wrap">
       <label for="team-input">Search for your team</label>
       <input
@@ -310,6 +305,11 @@
         spellcheck="false"
       >
       <div id="ac-dropdown" class="ac-dropdown" role="listbox"></div>
+    </div>
+
+    <div id="playoff-note" class="info" style="display:none">
+      <span class="info-icon">ℹ️</span>
+      <span>Playoff schedules are not included in this calendar.</span>
     </div>
 
     <div id="result">
@@ -366,6 +366,7 @@
     const input = document.getElementById('team-input');
     const dropdown = document.getElementById('ac-dropdown');
     const result = document.getElementById('result');
+    const playoffNote = document.getElementById('playoff-note');
 
     let teams = [];
     let selectedSlug = null;
@@ -403,11 +404,13 @@
       }
 
       result.classList.add('show');
+      playoffNote.style.display = 'flex';
     }
 
     function hideResult() {
       result.classList.remove('show');
       document.getElementById('schedule-preview').classList.remove('show');
+      playoffNote.style.display = 'none';
       selectedSlug = null;
       input.classList.remove('valid');
     }
