@@ -29,7 +29,7 @@ def main(ctx=None):
     hasl_calendar_cron = service(
         "hasl-calendar-cron",
         source=github(
-            "cbrcoding-burley/hasl-calendar", checkSuites=True, rootDirectory="/src"
+            "cbrcoding-burley/hasl-calendar", checkSuites=True, rootDirectory="/"
         ),
         replicas={"us-east4-eqdc4a": 1},
         deploy={
