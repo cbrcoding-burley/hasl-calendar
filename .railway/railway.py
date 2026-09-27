@@ -23,7 +23,7 @@ def main(ctx=None):
         preDeploy="python -m hasl_calendar.migrate && python seed.py",
         start="gunicorn 'hasl_calendar.app:app' --bind 0.0.0.0:$PORT --workers 2",
         volumeMounts={"/data": data},
-        env={"DATABASE_URL": preserve(), "SYNC_PUBLIC_KEY": preserve()},
+        env={"DATABASE_URL": "sqlite:////data/hasl.db", "SYNC_PUBLIC_KEY": preserve()},
     )
 
     hasl_calendar_cron = service(
