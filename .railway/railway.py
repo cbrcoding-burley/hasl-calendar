@@ -39,7 +39,10 @@ def main(ctx=None):
             "restartPolicyType": "NEVER",
         },
         start="python -m hasl_calendar.sync_cron",
-        env={"HASL_CALENDAR_URL": preserve(), "SYNC_PRIVATE_KEY": preserve()},
+        env={
+            "HASL_CALENDAR_URL": "http://${{hasl-calendar-server.RAILWAY_PRIVATE_DOMAIN}}:8080",
+            "SYNC_PRIVATE_KEY": preserve(),
+        },
     )
 
     return project(
